@@ -2,6 +2,38 @@ import { defineSchema, defineTable } from 'convex/server';
 import { Infer, v } from 'convex/values';
 import { Table } from './lib/utils';
 
+export const Properties = Table('properties', {
+  playerId: v.id('players'),
+  money: v.number(),
+  assets: v.union(
+    v.object({
+      type: v.literal("data"),
+      value: v.id('data'),
+    }),
+    v.object({
+      type: v.literal("model"),
+      value: v.id('model'),
+    })
+  ),
+});
+
+export const TradeHistory = Table('tradehistory', {
+  sellerId: v.id('players'),
+  buyerId: v.id('players'),
+  price: v.number(),
+  item: v.string(),
+  // assets: v.union(
+  //   v.object({
+  //     type: v.literal("data"),
+  //     value: v.id('data'),
+  //   }),
+  //   v.object({
+  //     type: v.literal("model"),
+  //     value: v.id('model'),
+  //   })
+  // ),
+});
+
 export const Worlds = Table('worlds', {
   // name: v.string(),
   // characterIds: v.array(v.id('characters')),
@@ -232,6 +264,11 @@ export type SpritesheetData = Infer<(typeof Characters.fields)['spritesheetData'
 
 export default defineSchema(
   {
+    properties: Properties.table
+      .index('by_playerId', ['playerId']),
+    tradehistory: TradeHistory.table
+      .index('by_buyerId_sellerId', ['buyerId', 'sellerId']),
+      // .index('by_buyerId_type', ['buyerId', 'assets.type']),
     worlds: Worlds.table,
     maps: Maps.table,
     characters: Characters.table,

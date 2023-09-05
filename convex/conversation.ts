@@ -7,6 +7,7 @@ import { Message } from './schema';
 
 type Player = { id: Id<'players'>; name: string; identity: string };
 type Relation = Player & { relationship?: string };
+// type Trade = {}
 
 export async function startConversation(
   ctx: ActionCtx,
@@ -25,11 +26,14 @@ export async function startConversation(
 
   const convoMemories = filterMemoriesType(['conversation'], memories);
 
+
   const prompt: LLMMessage[] = [
     {
       role: 'user',
       content:
-        `You are ${player.name}. You just saw ${newFriendsNames}. You should greet them and start a conversation with them. Below are some of your memories about ${newFriendsNames}:` +
+        `You are ${player.name}. You just saw ${newFriendsNames}. 
+        You should greet them and start a conversation with them. 
+        Below are some of your memories about ${newFriendsNames}:` +
         audience
           .filter((r) => r.relationship)
           .map((r) => `Relationship with ${r.name}: ${r.relationship}`)
@@ -164,6 +168,9 @@ export async function converse(
   prefixPrompt += `Last time you chatted with some of ${nearbyPlayersNames} it was ${lastConversationTs}. It's now ${Date.now()}. You can cut this conversation short if you talked to this group of people within the last day. \n}`;
 
   prefixPrompt += `Below are relevant memories to this conversation you are having right now: ${relevantMemories}\n`;
+  prefixPrompt += `If you begined the conversation, you want to buy some data, otherwise you want to sell your data.Your conversation goal is to achieve the deal.\n`;
+  prefixPrompt += `You are trying to make the deal in one conversation so you must talk effeciantly.\n`;
+  prefixPrompt += `When you make a deal, you exchange money and data directly without other platform and you exchange NOW.\n`;
 
   prefixPrompt +=
     'Below are the current chat history between you and the other folks mentioned above. DO NOT greet the other people more than once. Only greet ONCE. Do not use the word Hey too often. Response should be brief and within 200 characters: \n';
@@ -201,4 +208,78 @@ export async function walkAway(messages: LLMMessage[], player: Player): Promise<
     temperature: 0,
   });
   return description === '1';
+}
+
+export async function madeTrade(messages: LLMMessage[]): Promise<boolean> {
+  const prompt: LLMMessage[] = [
+    {
+      role: 'user',
+      content: `Below is a chat history among a few people.
+
+      Return 1 if they made a deal in the talk and 0 if they didn't.`,
+    },
+    ...messages,
+  ];
+  const { content: description } = await chatCompletion({
+    messages: prompt,
+    max_tokens: 1,
+    temperature: 0,
+  });
+  return description === '1';
+}
+
+// export const TradeHistory = Table('tradehistory', {
+//   sellerId: v.id('players'),
+//   buyerId: v.id('players'),
+//   price: v.number(),
+//   item: v.string(),
+// });
+export async function getTradeDetail(
+  players: Player[],
+  chatHistory: LLMMessage[],
+// ): Promise<Trade> {
+){
+  const promptStr = `[no prose]\n [Output only JSON]
+
+  ${JSON.stringify(players)}
+  Here is a list of people in the conversation, 
+  return BOTH name and ID of the buyer and the seller, price,and the item they traded,   
+  based on the trade conversation history provided below.
+  Return in JSON format, 
+  example: {"buyerName": "Alex", buyerId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data"}`;
+  
+  const prompt: LLMMessage[] = [
+    {
+      role: 'user',
+      content: promptStr,
+    },
+    ...chatHistory,
+  ];
+  const { content } = await chatCompletion({ messages: prompt, max_tokens: 300 });
+  let buyerId,sellerId,item: string;
+  try {
+    buyerId = JSON.parse(content).buyerId;
+  } catch (e) {
+    console.error('error parsing buyerId: ', e);
+  }
+  try {
+    sellerId = JSON.parse(content).sellerId;
+  } catch (e) {
+    console.error('error parsing sellerId: ', e);
+  }
+  try {
+    item = JSON.parse(content).item;
+  } catch (e) {
+    console.error('error parsing item: ', e);
+    item = 'nothing';
+  }
+  let price: number;
+  try {
+    price = JSON.parse(content).price;
+  } catch (e) {
+    console.error('error parsing price: ', e);
+    price = 1;
+  }
+  return {sellerId: sellerId, buyerId: buyerId, price: price, item: item};
+
 }

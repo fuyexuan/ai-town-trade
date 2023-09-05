@@ -15,6 +15,8 @@ import {
   converse,
   startConversation,
   walkAway,
+  madeTrade,
+  getTradeDetail,
 } from './conversation';
 import { getNearbyPlayers } from './lib/physics';
 import { CONVERSATION_TIME_LIMIT, CONVERSATION_PAUSE } from './config';
@@ -112,6 +114,8 @@ function divideIntoGroups(players: Player[]) {
   return { groups, solos };
 }
 
+
+// TODOFYX: 把这个solo的改成去田里收集数据和模型吧
 async function handleAgentSolo(ctx: ActionCtx, player: Player, memory: MemoryDB, done: DoneFn) {
   // console.debug('handleAgentSolo: ', player.name, player.id);
   // Handle new observations: it can look at the agent's lastWakeTs for a delta.
@@ -217,6 +221,7 @@ export async function handleAgentInteraction(
       endConversation = audience.length === 0;
 
       // TODO: remove this player from the audience list
+
       break;
     }
 
@@ -252,6 +257,23 @@ export async function handleAgentInteraction(
       await done(player.agentId, { type: 'walk', ignore: players.map((p) => p.id) });
     }
   }
+
+  const chatHistory = chatHistoryFromMessages(messages); 
+  // TODOFYX: add tradehistory
+  const needRecordTrade = (await madeTrade(chatHistory));
+  if (needRecordTrade) {
+    const tradedetail = await getTradeDetail(
+      remainingPlayers,
+      chatHistory,
+    );
+    await ctx.runMutation(internal.journal.recordTrade, {
+      sellerId: tradedetail.sellerId,
+      buyerId: tradedetail.buyerId,
+      price: tradedetail.price,
+      item: tradedetail.item,
+    });
+  }
+
 }
 
 type DoneFn = (

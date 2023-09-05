@@ -1,5 +1,8 @@
 // That's right! No imports and no dependencies 🤯
 
+//import { Configuration, OpenAIApi } from "openai"; 
+// import { OpenAIClient, AzureKeyCredential } from "@azure/openai";
+
 export async function chatCompletion(
   body: Omit<CreateChatCompletionRequest, 'model'> & {
     model?: CreateChatCompletionRequest['model'];
@@ -12,18 +15,38 @@ export async function chatCompletion(
         '    npx convex dashboard\n or https://dashboard.convex.dev',
     );
   }
+//   const client = new OpenAIClient(process.env.OPENAI_API_ENDPOINT, new AzureKeyCredential(process.env.OPENAI_API_KEY));
+//   // const deploymentId = "gpt-35-turbo";
+//   const deploymentId = "AI_Town_fyx";
+//   const result = await client.getChatCompletions(deploymentId, body: JSON.stringify(body),);
+//   this.openAiApi = new OpenAIApi(
+//     new Configuration({
+//        apiKey: this.apiKey,
+//        // add azure info into configuration
+//        azure: {
+//           apiKey: {your-azure-openai-resource-key},
+//           endpoint: {your-azure-openai-resource-endpoint},
+//           // deploymentName is optional, if you donot set it, you need to set it in the request parameter
+//           deploymentName: {your-azure-openai-resource-deployment-name},
+//        }
+//     }),
+//  );
 
-  body.model = body.model ?? 'gpt-3.5-turbo-16k';
+  // body.model = body.model ?? 'gpt-3.5-turbo-16k';
+  body.model = body.model ?? 'gpt-35-turbo';
+  // body.model = 'gpt-35-turbo';
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
-    const result = await fetch('https://api.openai.com/v1/chat/completions', {
+    // const result = await fetch('https://api.openai.com/v1/chat/completions', {
+    const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx/chat/completions?api-version=2023-05-15', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY,
+        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        'api-key': process.env.OPENAI_API_KEY ?? "",
       },
 
       body: JSON.stringify(body),
@@ -56,16 +79,19 @@ export async function fetchEmbeddingBatch(texts: string[]) {
         '    npx convex dashboard\n or https://dashboard.convex.dev',
     );
   }
+  console.log('Embedding text:',texts);
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
-    const result = await fetch('https://api.openai.com/v1/embeddings', {
+    // const result = await fetch('https://api.openai.com/v1/embeddings', {
+    const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx2/embeddings?api-version=2023-05-15', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY,
+        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        'api-key': process.env.OPENAI_API_KEY ?? "",
       },
 
       body: JSON.stringify({
@@ -101,7 +127,7 @@ export async function fetchEmbedding(text: string) {
 }
 
 // Retry after this much time, based on the retry number.
-const RETRY_BACKOFF = [1000, 10_000]; // In ms
+const RETRY_BACKOFF = [1000, 10_000, 20_000]; // In ms
 const RETRY_JITTER = 100; // In ms
 type RetryError = { retry: boolean; error: any };
 
@@ -222,6 +248,7 @@ export interface CreateChatCompletionRequest {
     | 'gpt-4-32k'
     | 'gpt-4-32k-0613'
     | 'gpt-3.5-turbo'
+    | 'gpt-35-turbo'
     | 'gpt-3.5-turbo-0613'
     | 'gpt-3.5-turbo-16k' // <- our default
     | 'gpt-3.5-turbo-16k-0613';

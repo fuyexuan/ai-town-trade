@@ -263,6 +263,8 @@ export const walk = internalMutation({
     const targetPosition = target
       ? getPoseFromMotion(await getLatestPlayerMotion(ctx.db, target), ts).position
       : getRandomPosition(map);
+    // const targetPosition = getRandomPosition(map)
+
     const ourMotion = await getLatestPlayerMotion(ctx.db, playerId);
     const { route, distance } = findRoute(
       map,
@@ -353,5 +355,36 @@ export function getRandomPosition(map: Doc<'maps'>): Position {
       y: Math.floor(Math.random() * map.bgTiles[0].length),
     };
   while (map.objectTiles[pos.y][pos.x] !== -1);
+  // while (map.objectTiles[pos.y][pos.x] !== 1213);
+  // while (map.bgTiles[1][pos.y][pos.x] !== 900 && map.bgTiles[1][pos.y][pos.x] !== 901
+  //     && map.bgTiles[1][pos.y][pos.x] !== 950 && map.bgTiles[1][pos.y][pos.x] !== 902
+  //     && map.bgTiles[1][pos.y][pos.x] !== 952 && map.bgTiles[1][pos.y][pos.x] !== 1002
+  //     && map.bgTiles[1][pos.y][pos.x] !== 1000 && map.bgTiles[1][pos.y][pos.x] !== 1001
+  //   );
   return pos;
 }
+
+// example: {"buyerName": "Alex", buyerId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data"}`;
+  
+// export const TradeHistory = Table('tradehistory', {
+//   sellerId: v.id('players'),
+//   buyerId: v.id('players'),
+//   price: v.number(),
+//   item: v.string(),
+// });
+export const recordTrade = internalMutation({
+  args: {
+    sellerId: v.id('players'),
+    buyerId: v.id('players'),
+    price: v.number(),
+    item: v.string(),
+  },
+  handler: async (ctx, {sellerId, buyerId, price, item, ...args }) => {
+    await ctx.db.insert('tradehistory', {
+      sellerId,
+      buyerId,
+      price,
+      item,
+    });
+  },
+});
