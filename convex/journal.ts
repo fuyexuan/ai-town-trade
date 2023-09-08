@@ -264,6 +264,7 @@ export const walk = internalMutation({
       ? getPoseFromMotion(await getLatestPlayerMotion(ctx.db, target), ts).position
       : getRandomPosition(map);
     // const targetPosition = getRandomPosition(map)
+    console.log('Now walk.');
 
     const ourMotion = await getLatestPlayerMotion(ctx.db, playerId);
     const { route, distance } = findRoute(
@@ -274,7 +275,9 @@ export const walk = internalMutation({
       ts,
     );
     if (distance === 0) {
+      console.log('test: walk distance === 0.');
       if (ourMotion.type === 'walking') {
+        console.log('test: walking to stopped.');
         await ctx.db.insert('journal', {
           playerId,
           data: {
@@ -292,6 +295,7 @@ export const walk = internalMutation({
         // TODO: detect collisions with other players running into us.
       };
     }
+    console.log('test: walk distance != 0.');
     const exclude = new Set([...ignore, playerId]);
     const targetEndTs = ts + distance * TIME_PER_STEP;
     let endOrientation: number | undefined;
@@ -308,6 +312,7 @@ export const walk = internalMutation({
       ts,
       CLOSE_DISTANCE,
     );
+    console.log('test: walk finished.');
     return {
       targetEndTs,
       nextCollision: collisions && {
@@ -364,27 +369,151 @@ export function getRandomPosition(map: Doc<'maps'>): Position {
   return pos;
 }
 
-// example: {"buyerName": "Alex", buyerId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data"}`;
+
+// example: {"buyerName": "Alex", buyerFId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data"}`;
   
-// export const TradeHistory = Table('tradehistory', {
-//   sellerId: v.id('players'),
-//   buyerId: v.id('players'),
-//   price: v.number(),
-//   item: v.string(),
-// });
 export const recordTrade = internalMutation({
+  args: {
+    sellerId: v.id('players'),
+    sellerName: v.string(),
+    buyerId: v.id('players'),
+    buyerName: v.string(),
+    price: v.number(),
+    item: v.string(),
+    // item: v.array(v.string()),
+  },
+  handler: async (ctx, {sellerId, sellerName, buyerId, buyerName, price, item, ...args }) => {
+    await ctx.db.insert('tradehistory', {
+      sellerId,
+      sellerName,
+      buyerId,
+      buyerName,
+      price,
+      item,
+    });
+  },
+});
+
+
+// export const Properties = Table('properties', {
+//   playerId: v.id('players'),
+//   money: v.number(),
+//   assets: v.string(),
+
+import { query } from "./_generated/server";
+
+// export const updateProperties = internalMutation({
+//   args: {
+//     sellerId: v.id('players'),
+//     buyerId: v.id('players'),
+//     price: v.number(),
+//     item: v.string(),
+
+//   },
+//   handler: async (ctx, { sellerId, buyerId, price, item }) => {
+//     try {
+//       // Fetch properties for both the seller and buyer in a single query
+//       const properties = await ctx.db
+//         .query('properties')
+//         .filter((q) => q.in(q.field('playerId'), [sellerId, buyerId]))
+//         .collect();
+//       if (properties.length < 2) {
+//         throw new Error('Seller or buyer properties not found');
+//       }
+//       const sellerProperty = properties.find((prop) => prop.playerId === sellerId);
+//       const buyerProperty = properties.find((prop) => prop.playerId === buyerId);
+//       if (!sellerProperty || !buyerProperty) {
+//         throw new Error('Seller or buyer properties not found');
+//       }
+//       // Update the money and assets fields for both seller and buyer
+//       const updatedSellerMoney = sellerProperty.money + price;
+//       const updatedBuyerMoney = buyerProperty.money - price;
+//       const updatedBuyerAssets = `${buyerProperty.assets}, ${item}($${price} bought)`;
+//       await ctx.db.transaction(async (trx) => {
+//         // Update seller's properties
+//         await trx.patch(sellerProperty._id, { money: updatedSellerMoney });
+//         // Update buyer's properties
+//         await trx.patch(buyerProperty._id, {
+//           money: updatedBuyerMoney,
+//           assets: updatedBuyerAssets,
+//         });
+//       });
+//       return true; // Indicate success if needed
+//     } catch (e) {
+//       console.error(`Error updating player properties`);
+//       throw e;
+//     }
+//   },
+
+// });
+
+export const updateProperties = internalMutation({
   args: {
     sellerId: v.id('players'),
     buyerId: v.id('players'),
     price: v.number(),
     item: v.string(),
   },
-  handler: async (ctx, {sellerId, buyerId, price, item, ...args }) => {
-    await ctx.db.insert('tradehistory', {
-      sellerId,
-      buyerId,
-      price,
-      item,
-    });
+  handler: async (ctx, { sellerId, buyerId, price, item, ...args }) => {
+    try {
+      const seller_properties = await ctx.db
+        .query('properties')
+        .filter((q) => q.eq(q.field('playerId'), sellerId))
+        .collect();
+      if (seller_properties.length === 0) {
+        throw new Error('Seller properties not found');
+      }
+      const seller_propertyId = seller_properties[0]._id; // Assuming there's only one matching property
+      const seller_money = seller_properties[0].money; // Assuming there's only one matching property
+      // Update the money and assets fields
+      await ctx.db.patch(seller_propertyId, {
+        money: seller_money + price,
+      });
+
+      
+      const buyer_properties = await ctx.db
+        .query('properties')
+        .filter((q) => q.eq(q.field('playerId'), buyerId))
+        .collect();
+      if (buyer_properties.length === 0) {
+        throw new Error('Buyer properties not found');
+      }
+      const buyer_propertyId = buyer_properties[0]._id; // Assuming there's only one matching property
+      const buyer_money = buyer_properties[0].money; // Assuming there's only one matching property
+      const buyer_assets = buyer_properties[0].assets; // Assuming there's only one matching property
+      // Update the money and assets fields
+      await ctx.db.patch(buyer_propertyId, {
+        money: buyer_money - price,
+        assets: `${buyer_assets}, ${item}($${price} bought)`,
+      });
+
+      return true; // Indicate success if needed
+    } catch (e) {
+      console.error(`Error updating player properties`);
+      throw e;
+    }
+  },
+});
+
+export const getProperties = internalQuery({
+  args: { playerId: v.id('players') },
+  handler: async (ctx, { playerId, ...args }) => {
+    const properties = await ctx.db
+        .query('properties')
+        .filter((q) => q.eq(q.field('playerId'), playerId))
+        .collect();
+      if (properties.length === 0) {
+        throw new Error('Player properties not found');
+      }
+    // return properties;
+    return {
+      id: playerId,
+      money: properties[0].money,
+      assets: properties[0].assets,
+    };
+    // const player_propertyId = properties[0]._id; // Assuming there's only one matching property
+    // const player_money = properties[0].money; // Assuming there's only one matching property
+    // const player_assets = properties[0].assets; // Assuming there's only one matching property
+    // return {player_propertyId, player_money, player_assets};
   },
 });

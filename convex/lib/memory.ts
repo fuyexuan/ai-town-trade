@@ -39,7 +39,8 @@ export interface MemoryDB {
     playerId: Id<'players'>,
     playerIdentity: string,
     conversationId: Id<'conversations'>,
-  ): Promise<boolean>;
+  // ): Promise<boolean>;
+  ): Promise<string>;
   reflectOnMemories(playerId: Id<'players'>, name: string): Promise<void>;
 }
 
@@ -131,7 +132,8 @@ export function MemoryDB(ctx: ActionCtx): MemoryDB {
         playerId,
         conversationId,
       });
-      if (!messages.length) return false;
+      // if (!messages.length) return false;
+      if (!messages.length) return "";
       const { content: description } = await chatCompletion({
         messages: [
           {
@@ -157,7 +159,8 @@ export function MemoryDB(ctx: ActionCtx): MemoryDB {
           },
         },
       ]);
-      return true;
+      // return true;
+      return description;
     },
     async reflectOnMemories(playerId: Id<'players'>, name: string) {
       const { memories, lastReflectionTs } = await ctx.runQuery(

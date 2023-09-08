@@ -63,7 +63,7 @@ export const addPlayers = internalMutation({
       charactersByName[character.name] = characterId;
     }
     const playersByName: Record<string, Id<'players'>> = {};
-    for (const { name, character, position } of Descriptions) {
+    for (const { name, character, position, money, assets } of Descriptions) {
       const characterId = charactersByName[character];
       const playerId = await ctx.db.insert('players', {
         name,
@@ -79,6 +79,14 @@ export const addPlayers = internalMutation({
         lastWakeTs: Date.now(),
       });
       await ctx.db.patch(playerId, { agentId });
+
+      await ctx.db.insert('properties', {
+        playerId,
+        name,
+        money,
+        assets,
+      });
+
       await ctx.db.insert('journal', {
         playerId,
         data: {
@@ -154,10 +162,13 @@ export const seed = internalAction({
         return newMemory;
       });
     });
+    console.log(`new world addMemories`);
     // It will check the cache, calculate missing embeddings, and add them.
     // If it fails here, it won't be retried. But you could clear the memor
     await MemoryDB(ctx).addMemories(memories);
+    console.log(`new world try tick`);
     await ctx.runMutation(internal.engine.tick, { worldId });
+    console.log(`new world tick done`);
     return worldId;
   },
 });

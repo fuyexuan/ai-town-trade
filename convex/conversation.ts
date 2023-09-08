@@ -1,13 +1,20 @@
 import { Id } from './_generated/dataModel';
 import { ActionCtx } from './_generated/server';
+import { recordTrade } from './journal';
 import { fetchEmbeddingWithCache } from './lib/cached_llm';
 import { MemoryDB, filterMemoriesType } from './lib/memory';
 import { LLMMessage, chatCompletion, fetchEmbedding } from './lib/openai';
 import { Message } from './schema';
 
 type Player = { id: Id<'players'>; name: string; identity: string };
+type Properties = { id: Id<'players'>; money: number; assets: string };
+
+// id: playerId,
+// money: properties[0].money,
+// assets: properties[0].assets,
+// type Player = { id: Id<'players'>; name: string; identity: string; money:number };
 type Relation = Player & { relationship?: string };
-// type Trade = {}
+type TradeRecord = {sellerId: Id<'players'>;buyerId: Id<'players'>; sellerName: string; buyerName: string; price: number; item: string}
 
 export async function startConversation(
   ctx: ActionCtx,
@@ -25,7 +32,6 @@ export async function startConversation(
   const memories = await memory.accessMemories(player.id, embedding);
 
   const convoMemories = filterMemoriesType(['conversation'], memories);
-
 
   const prompt: LLMMessage[] = [
     {
@@ -125,12 +131,16 @@ export async function decideWhoSpeaksNext(
   return players.find((p) => p.id.toString() === speakerId) || players[randomIdx];
 }
 
+
+// import { internal } from './_generated/api';
+
 export async function converse(
   ctx: ActionCtx,
   messages: LLMMessage[],
   player: Player,
   nearbyPlayers: Relation[],
   memory: MemoryDB,
+  properties: Properties,
 ) {
   const nearbyPlayersNames = nearbyPlayers.join(', ');
   const lastMessage: string | null | undefined = messages?.at(-1)?.content;
@@ -152,7 +162,14 @@ export async function converse(
     .map((r) => r.memory.description)
     .join('\n');
 
+  // let prefixPrompt = `Your name is ${player.name}. About you: ${player.identity}.\n`;
   let prefixPrompt = `Your name is ${player.name}. About you: ${player.identity}.\n`;
+  
+  // const properties = await ctx.runQuery(internal.journal.getProperties, { playerId: player.id });
+  prefixPrompt += `NOW You have $${properties.money}. And you have ${properties.assets}.`;
+  prefixPrompt += `You CAN'T buy something that costs more than the money you have.`;
+  prefixPrompt += `You can ONLY sell data that you have.`;
+  
   if (relevantReflections.length > 0) {
     prefixPrompt += relevantReflections;
     // console.debug('relevantReflections', relevantReflections);
@@ -168,9 +185,17 @@ export async function converse(
   prefixPrompt += `Last time you chatted with some of ${nearbyPlayersNames} it was ${lastConversationTs}. It's now ${Date.now()}. You can cut this conversation short if you talked to this group of people within the last day. \n}`;
 
   prefixPrompt += `Below are relevant memories to this conversation you are having right now: ${relevantMemories}\n`;
-  prefixPrompt += `If you begined the conversation, you want to buy some data, otherwise you want to sell your data.Your conversation goal is to achieve the deal.\n`;
+  // prefixPrompt += `If you begined the conversation, you want to buy some data, otherwise you want to sell your data.Your conversation goal is to achieve the deal.\n`;
+  prefixPrompt += `You want to buy some data, and also sell your data.Your conversation goal is to achieve the deal.\n`;
+  prefixPrompt += `But you can't exchange data directly with others, it has to be a data-money transaction model.\n`;
+  
   prefixPrompt += `You are trying to make the deal in one conversation so you must talk effeciantly.\n`;
-  prefixPrompt += `When you make a deal, you exchange money and data directly without other platform and you exchange NOW.\n`;
+  prefixPrompt += `When you make a deal, you exchange money and data directly without other platform and you exchange NOW. No need to arrange another time and place to make the deal.Just say here is the data/money.\n`;
+
+  // 根据卖方市场和买方市场的不同场景选择不同的prompt
+  // prefixPrompt += `This is a Seller's Market so the seller can offer a higher price to sell the data that buyer has no choice but to buy the data in a high price.`;
+  prefixPrompt += `This is a Buyer's Market so the buyer can offer a lower price to buy the data that seller has no choice but to sell the data in a low price.`;
+
 
   prefixPrompt +=
     'Below are the current chat history between you and the other folks mentioned above. DO NOT greet the other people more than once. Only greet ONCE. Do not use the word Hey too often. Response should be brief and within 200 characters: \n';
@@ -210,15 +235,18 @@ export async function walkAway(messages: LLMMessage[], player: Player): Promise<
   return description === '1';
 }
 
-export async function madeTrade(messages: LLMMessage[]): Promise<boolean> {
+export async function madeTrade(summary: string): Promise<boolean> {
   const prompt: LLMMessage[] = [
     {
       role: 'user',
       content: `Below is a chat history among a few people.
 
-      Return 1 if they made a deal in the talk and 0 if they didn't.`,
+      ${summary}
+
+      Return 1 if they DID make a deal (exchanged data and money) in the talk  and 0 if they didn't.
+      If the conversation ends when they are about to trade but have not yet completed an explicit transaction (the conversation is interrupted), also return 0. 
+      The answer should only be "1" or "0", no extra explanation. `,
     },
-    ...messages,
   ];
   const { content: description } = await chatCompletion({
     messages: prompt,
@@ -236,50 +264,126 @@ export async function madeTrade(messages: LLMMessage[]): Promise<boolean> {
 // });
 export async function getTradeDetail(
   players: Player[],
-  chatHistory: LLMMessage[],
+  summary: string,
 // ): Promise<Trade> {
 ){
+  const playerNamesandIds =  players.map((p) => ({ name: p.name, id: p.id }));
+  console.log('test: playerNamesandIds = ',playerNamesandIds);
   const promptStr = `[no prose]\n [Output only JSON]
 
-  ${JSON.stringify(players)}
+  ${summary}
+
+  Here is the summary of the conversation.
+
+  ${JSON.stringify(playerNamesandIds)}
   Here is a list of people in the conversation, 
-  return BOTH name and ID of the buyer and the seller, price,and the item they traded,   
+  return BOTH name and id of the buyer and the seller, price,and the item they traded,   
   based on the trade conversation history provided below.
+  The value of price should be a number or float, no extra symbol.
+  If they trade multiple items at one price, return in ONE string.
+  If they trade multiple items at different price like A in $10, B in $20, return in multiple records like [{...,price:10,item:"A"},{...,price:20,item:"B"}];
+  ONLY return those who participated in the transaction, as there may have been people who participated in the conversation but did not participate in the transaction. 
+  
   Return in JSON format, 
-  example: {"buyerName": "Alex", buyerId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data"}`;
+  example: {"buyerName": "Alex", buyerId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data, tree data"}`;
   
   const prompt: LLMMessage[] = [
     {
       role: 'user',
       content: promptStr,
     },
-    ...chatHistory,
   ];
   const { content } = await chatCompletion({ messages: prompt, max_tokens: 300 });
-  let buyerId,sellerId,item: string;
+  console.log('test: getTradeDetail prompt = ',prompt);
+  console.log('test: getTradeDetail content = ',content);
+
+  let data = [];
   try {
-    buyerId = JSON.parse(content).buyerId;
+    data = JSON.parse(content);
+    if (!Array.isArray(data)){
+      data = [data];
+    }
   } catch (e) {
-    console.error('error parsing buyerId: ', e);
+  console.error('Error parsing JSON content:', e);
   }
-  try {
-    sellerId = JSON.parse(content).sellerId;
-  } catch (e) {
-    console.error('error parsing sellerId: ', e);
-  }
-  try {
-    item = JSON.parse(content).item;
-  } catch (e) {
-    console.error('error parsing item: ', e);
-    item = 'nothing';
-  }
-  let price: number;
-  try {
-    price = JSON.parse(content).price;
-  } catch (e) {
-    console.error('error parsing price: ', e);
-    price = 1;
-  }
-  return {sellerId: sellerId, buyerId: buyerId, price: price, item: item};
+
+  console.log('test: getTradeDetail data = ', data);
+
+  const results = data.map((resultitem: TradeRecord) => {
+    let buyerId = 'nobuyer';
+    let sellerId = 'noseller';
+    let item = 'nothing';
+    let buyerName = 'nobuyer';
+    let sellerName = 'noseller';
+    let price = 1;
+    try {
+      buyerId = resultitem.buyerId || buyerId;
+      sellerId = resultitem.sellerId || sellerId;
+      item = resultitem.item || item;
+      buyerName = resultitem.buyerName || buyerName;
+      sellerName = resultitem.sellerName || sellerName;
+      price = resultitem.price || price;
+    } catch (e) {
+      console.error('Error parsing TradeDetail: ', e);
+    }
+    return {
+      sellerId,
+      sellerName,
+      buyerId,
+      buyerName,
+      price,
+      item,
+    };
+  });
+  console.log('test: getTradeDetail results = ',results);
+  return results;
+
+
+
+
+
+  // let buyerId,sellerId,item,buyerName,sellerName: string;
+  // try {
+  //   buyerId = JSON.parse(content).buyerId;
+  // } catch (e) {
+  //   console.error('error parsing buyerId: ', e);
+  // }
+  // try {
+  //   buyerName = JSON.parse(content).buyerName;
+  // } catch (e) {
+  //   console.error('error parsing buyerName: ', e);
+  //   buyerName = 'nobuyer';
+  // }
+  // try {
+  //   sellerId = JSON.parse(content).sellerId;
+  // } catch (e) {
+  //   console.error('error parsing sellerId: ', e);
+  // }
+  // try {
+  //   sellerName = JSON.parse(content).sellerName;
+  // } catch (e) {
+  //   console.error('error parsing sellerName: ', e);
+  //   sellerName = 'noseller';
+  // }
+  // try {
+  //   item = JSON.parse(content).item;
+  // } catch (e) {
+  //   console.error('error parsing item: ', e);
+  //   item = 'nothing';
+  // }
+  // let price: number;
+  // try {
+  //   price = JSON.parse(content).price;
+  // } catch (e) {
+  //   console.error('error parsing price: ', e);
+  //   price = 1;
+  // }
+  // return {sellerId: sellerId, 
+  //         sellerName: sellerName,
+  //         buyerId: buyerId, 
+  //         buyerName: buyerName,
+  //         price: price, 
+  //         item: item};
 
 }
+

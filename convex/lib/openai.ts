@@ -1,8 +1,5 @@
 // That's right! No imports and no dependencies 🤯
 
-//import { Configuration, OpenAIApi } from "openai"; 
-// import { OpenAIClient, AzureKeyCredential } from "@azure/openai";
-
 export async function chatCompletion(
   body: Omit<CreateChatCompletionRequest, 'model'> & {
     model?: CreateChatCompletionRequest['model'];
@@ -15,26 +12,9 @@ export async function chatCompletion(
         '    npx convex dashboard\n or https://dashboard.convex.dev',
     );
   }
-//   const client = new OpenAIClient(process.env.OPENAI_API_ENDPOINT, new AzureKeyCredential(process.env.OPENAI_API_KEY));
-//   // const deploymentId = "gpt-35-turbo";
-//   const deploymentId = "AI_Town_fyx";
-//   const result = await client.getChatCompletions(deploymentId, body: JSON.stringify(body),);
-//   this.openAiApi = new OpenAIApi(
-//     new Configuration({
-//        apiKey: this.apiKey,
-//        // add azure info into configuration
-//        azure: {
-//           apiKey: {your-azure-openai-resource-key},
-//           endpoint: {your-azure-openai-resource-endpoint},
-//           // deploymentName is optional, if you donot set it, you need to set it in the request parameter
-//           deploymentName: {your-azure-openai-resource-deployment-name},
-//        }
-//     }),
-//  );
 
-  // body.model = body.model ?? 'gpt-3.5-turbo-16k';
-  body.model = body.model ?? 'gpt-35-turbo';
-  // body.model = 'gpt-35-turbo';
+  // body.model = body.model ?? 'gpt-3.5-turbo-16k'; // openai 模型名
+  body.model = body.model ?? 'gpt-35-turbo'; // azure-openai 模型名
   const {
     result: json,
     retries,
@@ -79,12 +59,13 @@ export async function fetchEmbeddingBatch(texts: string[]) {
         '    npx convex dashboard\n or https://dashboard.convex.dev',
     );
   }
-  console.log('Embedding text:',texts);
+  // console.log('Embedding text:',texts);
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
+    // 由于azure的openai接口限制16维数据，一开始初始化人物信息时需要先用openai的接口，初始化完成后改为azure运行
     // const result = await fetch('https://api.openai.com/v1/embeddings', {
     const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx2/embeddings?api-version=2023-05-15', {
       method: 'POST',

@@ -82,8 +82,7 @@ function conversationQuery(db: DatabaseReader, conversationId: Id<'conversations
   );
 }
 
-export function 
-clientMessageMapper(db: DatabaseReader) {
+export function clientMessageMapper(db: DatabaseReader) {
   const getName = async (id: Id<'players'>) => (await db.get(id))?.name || '<Anonymous>';
   const clientMessage = async (m: MessageEntry): Promise<Message> => {
     const common = {

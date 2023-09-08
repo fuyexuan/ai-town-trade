@@ -4,22 +4,26 @@ import { Table } from './lib/utils';
 
 export const Properties = Table('properties', {
   playerId: v.id('players'),
+  name: v.string(),
   money: v.number(),
-  assets: v.union(
-    v.object({
-      type: v.literal("data"),
-      value: v.id('data'),
-    }),
-    v.object({
-      type: v.literal("model"),
-      value: v.id('model'),
-    })
-  ),
+  assets: v.string(),
+  // assets: v.union(
+  //   v.object({
+  //     type: v.literal("data"),
+  //     value: v.id('data'),
+  //   }),
+  //   v.object({
+  //     type: v.literal("model"),
+  //     value: v.id('model'),
+  //   })
+  // ),
 });
 
 export const TradeHistory = Table('tradehistory', {
   sellerId: v.id('players'),
+  sellerName: v.string(),
   buyerId: v.id('players'),
+  buyerName: v.string(),
   price: v.number(),
   item: v.string(),
   // assets: v.union(
