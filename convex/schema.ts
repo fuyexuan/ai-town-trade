@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from 'convex/server';
 import { Infer, v } from 'convex/values';
 import { Table } from './lib/utils';
 
+// FYX 新增加table：财产
 export const Properties = Table('properties', {
   playerId: v.id('players'),
   name: v.string(),
@@ -19,6 +20,7 @@ export const Properties = Table('properties', {
   // ),
 });
 
+// FYX 新增加table：交易记录
 export const TradeHistory = Table('tradehistory', {
   sellerId: v.id('players'),
   sellerName: v.string(),
@@ -269,6 +271,7 @@ export type SpritesheetData = Infer<(typeof Characters.fields)['spritesheetData'
 
 export default defineSchema(
   {
+    // FYX 新增加table的初始化
     properties: Properties.table
       .index('by_playerId', ['playerId']),
     tradehistory: TradeHistory.table

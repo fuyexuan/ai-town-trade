@@ -1,5 +1,7 @@
 // That's right! No imports and no dependencies 🤯
 
+// FYX 增加对azure openai 的支持
+
 export async function chatCompletion(
   body: Omit<CreateChatCompletionRequest, 'model'> & {
     model?: CreateChatCompletionRequest['model'];

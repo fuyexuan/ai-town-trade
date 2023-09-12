@@ -263,9 +263,6 @@ export const walk = internalMutation({
     const targetPosition = target
       ? getPoseFromMotion(await getLatestPlayerMotion(ctx.db, target), ts).position
       : getRandomPosition(map);
-    // const targetPosition = getRandomPosition(map)
-    console.log('Now walk.');
-
     const ourMotion = await getLatestPlayerMotion(ctx.db, playerId);
     const { route, distance } = findRoute(
       map,
@@ -275,9 +272,7 @@ export const walk = internalMutation({
       ts,
     );
     if (distance === 0) {
-      console.log('test: walk distance === 0.');
       if (ourMotion.type === 'walking') {
-        console.log('test: walking to stopped.');
         await ctx.db.insert('journal', {
           playerId,
           data: {
@@ -295,7 +290,6 @@ export const walk = internalMutation({
         // TODO: detect collisions with other players running into us.
       };
     }
-    console.log('test: walk distance != 0.');
     const exclude = new Set([...ignore, playerId]);
     const targetEndTs = ts + distance * TIME_PER_STEP;
     let endOrientation: number | undefined;
@@ -312,7 +306,6 @@ export const walk = internalMutation({
       ts,
       CLOSE_DISTANCE,
     );
-    console.log('test: walk finished.');
     return {
       targetEndTs,
       nextCollision: collisions && {
@@ -360,18 +353,10 @@ export function getRandomPosition(map: Doc<'maps'>): Position {
       y: Math.floor(Math.random() * map.bgTiles[0].length),
     };
   while (map.objectTiles[pos.y][pos.x] !== -1);
-  // while (map.objectTiles[pos.y][pos.x] !== 1213);
-  // while (map.bgTiles[1][pos.y][pos.x] !== 900 && map.bgTiles[1][pos.y][pos.x] !== 901
-  //     && map.bgTiles[1][pos.y][pos.x] !== 950 && map.bgTiles[1][pos.y][pos.x] !== 902
-  //     && map.bgTiles[1][pos.y][pos.x] !== 952 && map.bgTiles[1][pos.y][pos.x] !== 1002
-  //     && map.bgTiles[1][pos.y][pos.x] !== 1000 && map.bgTiles[1][pos.y][pos.x] !== 1001
-  //   );
   return pos;
 }
 
-
-// example: {"buyerName": "Alex", buyerFId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data"}`;
-  
+// FYX 新增加函数，功能：访问数据库添加交易记录
 export const recordTrade = internalMutation({
   args: {
     sellerId: v.id('players'),
@@ -396,7 +381,7 @@ export const recordTrade = internalMutation({
   },
 });
 
-
+// FYX 新增加函数，功能：根据交易记录更新财产
 export const updateProperties = internalMutation({
   args: {
     sellerId: v.id('players'),
@@ -404,8 +389,9 @@ export const updateProperties = internalMutation({
     price: v.number(),
     value: v.number(),
     item: v.string(),
+    buyer_gain: v.string(),
   },
-  handler: async (ctx, { sellerId, buyerId, price, value, item, ...args }) => {
+  handler: async (ctx, { sellerId, buyerId, price, value, item, buyer_gain, ...args }) => {
     try {
       const seller_properties = await ctx.db
         .query('properties')
@@ -430,13 +416,29 @@ export const updateProperties = internalMutation({
         throw new Error('Buyer properties not found');
       }
       const buyer_propertyId = buyer_properties[0]._id; // Assuming there's only one matching property
+      const buyer_name = buyer_properties[0].name; // Assuming there's only one matching property
       const buyer_money = buyer_properties[0].money; // Assuming there's only one matching property
       const buyer_assets = buyer_properties[0].assets; // Assuming there's only one matching property
-      // Update the money and assets fields
-      await ctx.db.patch(buyer_propertyId, {
-        money: buyer_money - price,
-        assets: `${buyer_assets}, ${item}(valued $${value})($${price} bought)`,
-      });
+
+      // // Update the money and assets fields
+
+      if (buyer_name.endsWith("CLIENT")) {
+        await ctx.db.patch(buyer_propertyId, {
+          money: buyer_money - price + value * 1.5,
+          assets: `${buyer_assets}, ${buyer_gain}`,
+        });
+      }
+      else if (buyer_name.endsWith("MODEL")){
+        await ctx.db.patch(buyer_propertyId, {
+          money: buyer_money - price,
+          assets: `${buyer_assets}, ${buyer_gain}`,
+        });
+      } else {//DATA
+        await ctx.db.patch(buyer_propertyId, {
+          money: buyer_money - price,
+          assets: `${buyer_assets}, ${buyer_gain}`,
+        });
+      }
 
       return true; // Indicate success if needed
     } catch (e) {
@@ -446,6 +448,7 @@ export const updateProperties = internalMutation({
   },
 });
 
+// FYX 新增加函数，功能：获得 player的财产，提供给prompt进行售卖
 export const getProperties = internalQuery({
   args: { playerId: v.id('players') },
   handler: async (ctx, { playerId, ...args }) => {
