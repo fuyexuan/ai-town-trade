@@ -7,14 +7,9 @@ import { LLMMessage, chatCompletion, fetchEmbedding } from './lib/openai';
 import { Message } from './schema';
 
 type Player = { id: Id<'players'>; name: string; identity: string };
-type Properties = { id: Id<'players'>; money: number; assets: string };
-
-// id: playerId,
-// money: properties[0].money,
-// assets: properties[0].assets,
-// type Player = { id: Id<'players'>; name: string; identity: string; money:number };
 type Relation = Player & { relationship?: string };
-type TradeRecord = {sellerId: Id<'players'>;buyerId: Id<'players'>; sellerName: string; buyerName: string; price: number; item: string}
+type Properties = { id: Id<'players'>; money: number; assets: string };
+type TradeRecord = {sellerId: Id<'players'>;buyerId: Id<'players'>; sellerName: string; buyerName: string; price: number; value: number;item: string}
 
 export async function startConversation(
   ctx: ActionCtx,
@@ -131,9 +126,6 @@ export async function decideWhoSpeaksNext(
   return players.find((p) => p.id.toString() === speakerId) || players[randomIdx];
 }
 
-
-// import { internal } from './_generated/api';
-
 export async function converse(
   ctx: ActionCtx,
   messages: LLMMessage[],
@@ -185,7 +177,6 @@ export async function converse(
   prefixPrompt += `Last time you chatted with some of ${nearbyPlayersNames} it was ${lastConversationTs}. It's now ${Date.now()}. You can cut this conversation short if you talked to this group of people within the last day. \n}`;
 
   prefixPrompt += `Below are relevant memories to this conversation you are having right now: ${relevantMemories}\n`;
-  // prefixPrompt += `If you begined the conversation, you want to buy some data, otherwise you want to sell your data.Your conversation goal is to achieve the deal.\n`;
   prefixPrompt += `You want to buy some data, and also sell your data.Your conversation goal is to achieve the deal.\n`;
   prefixPrompt += `But you can't exchange data directly with others, it has to be a data-money transaction model.\n`;
   
@@ -256,15 +247,10 @@ export async function madeTrade(summary: string): Promise<boolean> {
   return description === '1';
 }
 
-// export const TradeHistory = Table('tradehistory', {
-//   sellerId: v.id('players'),
-//   buyerId: v.id('players'),
-//   price: v.number(),
-//   item: v.string(),
-// });
 export async function getTradeDetail(
   players: Player[],
   summary: string,
+  property: string,
 // ): Promise<Trade> {
 ){
   const playerNamesandIds =  players.map((p) => ({ name: p.name, id: p.id }));
@@ -275,17 +261,21 @@ export async function getTradeDetail(
 
   Here is the summary of the conversation.
 
+  ${property}
+  Here is the property indicates each item's value.
+
   ${JSON.stringify(playerNamesandIds)}
   Here is a list of people in the conversation, 
-  return BOTH name and id of the buyer and the seller, price,and the item they traded,   
+  return BOTH name and id of the buyer and the seller, price,the item they traded, and the value of the item,   
   based on the trade conversation history provided below.
-  The value of price should be a number or float, no extra symbol.
+  The value and price should be a number or float, no extra symbol.
   If they trade multiple items at one price, return in ONE string.
   If they trade multiple items at different price like A in $10, B in $20, return in multiple records like [{...,price:10,item:"A"},{...,price:20,item:"B"}];
+  If they exchange their data without give out money, then the price is 0. 
   ONLY return those who participated in the transaction, as there may have been people who participated in the conversation but did not participate in the transaction. 
   
   Return in JSON format, 
-  example: {"buyerName": "Alex", buyerId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, item: "art data, tree data"}`;
+  example: {"buyerName": "Alex", buyerId: "1234", "sellerName": "Bob", sellerId: "5678", price: 100, value: 100, item: "art data, tree data"}`;
   
   const prompt: LLMMessage[] = [
     {
@@ -296,6 +286,7 @@ export async function getTradeDetail(
   const { content } = await chatCompletion({ messages: prompt, max_tokens: 300 });
   console.log('test: getTradeDetail prompt = ',prompt);
   console.log('test: getTradeDetail content = ',content);
+  console.log('test: getTradeDetail property = ',property);
 
   let data = [];
   try {
@@ -304,10 +295,10 @@ export async function getTradeDetail(
       data = [data];
     }
   } catch (e) {
-  console.error('Error parsing JSON content:', e);
+    console.error('Error parsing JSON content:', e, 'content = ',JSON.stringify(content));
   }
 
-  console.log('test: getTradeDetail data = ', data);
+  // console.log('test: getTradeDetail data = ', data);
 
   const results = data.map((resultitem: TradeRecord) => {
     let buyerId = 'nobuyer';
@@ -316,13 +307,22 @@ export async function getTradeDetail(
     let buyerName = 'nobuyer';
     let sellerName = 'noseller';
     let price = 1;
+    let value = 1;
     try {
       buyerId = resultitem.buyerId || buyerId;
       sellerId = resultitem.sellerId || sellerId;
       item = resultitem.item || item;
       buyerName = resultitem.buyerName || buyerName;
       sellerName = resultitem.sellerName || sellerName;
+      value = resultitem.value || value;
       price = resultitem.price || price;
+      // buyerId = resultitem.buyerId;
+      // sellerId = resultitem.sellerId;
+      // item = resultitem.item;
+      // buyerName = resultitem.buyerName;
+      // sellerName = resultitem.sellerName;
+      // value = resultitem.value;
+      // price = resultitem.price;
     } catch (e) {
       console.error('Error parsing TradeDetail: ', e);
     }
@@ -332,58 +332,12 @@ export async function getTradeDetail(
       buyerId,
       buyerName,
       price,
+      value,
       item,
     };
   });
-  console.log('test: getTradeDetail results = ',results);
+  // console.log('test: getTradeDetail results = ',results);
   return results;
-
-
-
-
-
-  // let buyerId,sellerId,item,buyerName,sellerName: string;
-  // try {
-  //   buyerId = JSON.parse(content).buyerId;
-  // } catch (e) {
-  //   console.error('error parsing buyerId: ', e);
-  // }
-  // try {
-  //   buyerName = JSON.parse(content).buyerName;
-  // } catch (e) {
-  //   console.error('error parsing buyerName: ', e);
-  //   buyerName = 'nobuyer';
-  // }
-  // try {
-  //   sellerId = JSON.parse(content).sellerId;
-  // } catch (e) {
-  //   console.error('error parsing sellerId: ', e);
-  // }
-  // try {
-  //   sellerName = JSON.parse(content).sellerName;
-  // } catch (e) {
-  //   console.error('error parsing sellerName: ', e);
-  //   sellerName = 'noseller';
-  // }
-  // try {
-  //   item = JSON.parse(content).item;
-  // } catch (e) {
-  //   console.error('error parsing item: ', e);
-  //   item = 'nothing';
-  // }
-  // let price: number;
-  // try {
-  //   price = JSON.parse(content).price;
-  // } catch (e) {
-  //   console.error('error parsing price: ', e);
-  //   price = 1;
-  // }
-  // return {sellerId: sellerId, 
-  //         sellerName: sellerName,
-  //         buyerId: buyerId, 
-  //         buyerName: buyerName,
-  //         price: price, 
-  //         item: item};
 
 }
 

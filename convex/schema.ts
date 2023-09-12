@@ -25,6 +25,7 @@ export const TradeHistory = Table('tradehistory', {
   buyerId: v.id('players'),
   buyerName: v.string(),
   price: v.number(),
+  value: v.number(),
   item: v.string(),
   // assets: v.union(
   //   v.object({

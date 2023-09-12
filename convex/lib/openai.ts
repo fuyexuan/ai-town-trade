@@ -66,13 +66,13 @@ export async function fetchEmbeddingBatch(texts: string[]) {
     ms,
   } = await retryWithBackoff(async () => {
     // 由于azure的openai接口限制16维数据，一开始初始化人物信息时需要先用openai的接口，初始化完成后改为azure运行
-    // const result = await fetch('https://api.openai.com/v1/embeddings', {
-    const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx2/embeddings?api-version=2023-05-15', {
+    const result = await fetch('https://api.openai.com/v1/embeddings', {
+    // const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx2/embeddings?api-version=2023-05-15', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-        'api-key': process.env.OPENAI_API_KEY ?? "",
+        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        // 'api-key': process.env.OPENAI_API_KEY ?? "",
       },
 
       body: JSON.stringify({

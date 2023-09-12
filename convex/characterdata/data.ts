@@ -13,10 +13,10 @@ export const Descriptions = [
     name: 'Alex',
     character: 'f5',
     money: 1000,
-    assets: `MNIST Handwritten Digits Dataset: $50
-    IMDb Movie Reviews Dataset: $100
-    Twitter Text Data: $75
-    Audio Emotion Dataset: $75`,
+    assets: `MNIST Handwritten Digits Dataset: valued $50
+    IMDb Movie Reviews Dataset: valued $100
+    Twitter Text Data: valued $75
+    Audio Emotion Dataset: valued $75`,
     memories: [
       {
         type: 'identity' as const,
@@ -30,10 +30,10 @@ export const Descriptions = [
          **Multidisciplinary Data Explorer**:
     - **Areas of Interest**: Computer Vision and Natural Language Processing.
     - **Owned Datasets**: 
-        MNIST Handwritten Digits Dataset: $50
-        IMDb Movie Reviews Dataset: $100
-        Twitter Text Data: $75
-        Audio Emotion Dataset: $75
+        MNIST Handwritten Digits Dataset: valued $50
+        IMDb Movie Reviews Dataset: valued $100
+        Twitter Text Data: valued $75
+        Audio Emotion Dataset: valued $75
     - **Trading Market Personality**: Adaptable to different markets, occasionally bargains, and values valuable data transactions.
         `
       },
@@ -53,8 +53,8 @@ export const Descriptions = [
     name: 'Lucky',
     character: 'f1',
     money: 1000,
-    assets: `CIFAR-10 Image Dataset: $60
-    SNLI Natural Language Inference Dataset: $40`,
+    assets: `CIFAR-10 Image Dataset: valued $60
+    SNLI Natural Language Inference Dataset: valued $40`,
     memories: [
       {
         type: 'identity' as const,
@@ -63,8 +63,8 @@ export const Descriptions = [
         - **Areas of Interest**: Computer Vision and Natural Language Processing.
         - **Owned Datasets**: 
     
-            CIFAR-10 Image Dataset: $60
-            SNLI Natural Language Inference Dataset: $40
+            CIFAR-10 Image Dataset: valued $60
+            SNLI Natural Language Inference Dataset: valued $40
         - **Trading Market Personality**: Less focused on data trading, prioritizes research applications of data.`,
       },
       {
@@ -78,8 +78,8 @@ export const Descriptions = [
     name: 'Bob',
     character: 'f4',
     money: 1000,
-    assets: `Stock Market Historical Data: $200
-    Economic Indicators Data: $150`,
+    assets: `Stock Market Historical Data: valued $200
+    Economic Indicators Data: valued $150`,
     memories: [
       {
         type: 'identity' as const,
@@ -88,8 +88,8 @@ export const Descriptions = [
         - **Areas of Interest**: Financial Data Analysis and Stock Markets.
         - **Owned Datasets**: 
     
-            Stock Market Historical Data: $200
-            Economic Indicators Data: $150
+            Stock Market Historical Data: valued $200
+            Economic Indicators Data: valued $150
         - **Trading Market Personality**: Primarily engages in trading financial data, specializes in stock trading strategies.`,
       },
       {
@@ -103,8 +103,8 @@ export const Descriptions = [
     name: 'Stella',
     character: 'f6',
     money: 1000,
-    assets: `MIMIC-III Clinical Data: $300
-    Chest X-ray Image Data: $200`,
+    assets: `MIMIC-III Clinical Data: valued $300
+    Chest X-ray Image Data: valued $200`,
     memories: [
       {
         type: 'identity' as const,
@@ -113,8 +113,8 @@ export const Descriptions = [
         - **Areas of Interest**: Healthcare Data Analysis and Disease Research.
         - **Owned Datasets**: 
     
-            MIMIC-III Clinical Data: $300
-            Chest X-ray Image Data: $200
+            MIMIC-III Clinical Data: valued $300
+            Chest X-ray Image Data: valued $200
         - **Trading Market Personality**: Less interested in other data domains, focuses on medical data research and applications.`,
       },
       {
@@ -128,8 +128,8 @@ export const Descriptions = [
     name: 'Kurt',
     character: 'f2',
     money: 1000,
-    assets: `Twitter Text Data: $75
-    Facebook Social Network Data: $100`,
+    assets: `Twitter Text Data: valued $75
+    Facebook Social Network Data: valued $100`,
     memories: [
       {
         type: 'identity' as const,
@@ -138,8 +138,8 @@ export const Descriptions = [
         - **Areas of Interest**: Social Network Analysis and Natural Language Processing.
         - **Owned Datasets**: 
     
-            Twitter Text Data: $75
-            Facebook Social Network Data: $100
+            Twitter Text Data: valued $75
+            Facebook Social Network Data: valued $100
         - **Trading Market Personality**: Specializes in social media data, may seek trading opportunities with other social media analysts.`,
       },
       {
@@ -153,8 +153,8 @@ export const Descriptions = [
     name: 'Alice',
     character: 'f3',
     money: 1000,
-    assets: `- Geospatial Data: $80
-    - Geographic Information Text Data: $50`,
+    assets: `- Geospatial Data: valued $80
+    - Geographic Information Text Data: valued $50`,
     memories: [
       {
         type: 'identity' as const,
@@ -162,8 +162,8 @@ export const Descriptions = [
         **Geographic Information Systems Expert**:
         - **Areas of Interest**: Geographic Information Systems and Natural Language Processing.
         - **Owned Datasets**: 
-            - Geospatial Data: $80
-            - Geographic Information Text Data: $50
+            - Geospatial Data: valued $80
+            - Geographic Information Text Data: valued $50
         - **Trading Market Personality**: Focuses on data trading and collaboration in the geographic information domain.`,
       },
       {
@@ -177,8 +177,8 @@ export const Descriptions = [
     name: 'Pete',
     character: 'f7',
     money: 1000,
-    assets: `- Audio Emotion Dataset: $70
-    - Music Feature Dataset: $50`,
+    assets: `- Audio Emotion Dataset: valued $70
+    - Music Feature Dataset: valued $50`,
     memories: [
       {
         type: 'identity' as const,
@@ -186,8 +186,8 @@ export const Descriptions = [
         **Audio Data Analyst**:
         - **Areas of Interest**: Audio Processing and Emotion Analysis.
         - **Owned Datasets**:
-            - Audio Emotion Dataset: $70
-            - Music Feature Dataset: $50
+            - Audio Emotion Dataset: valued $70
+            - Music Feature Dataset: valued $50
         - **Trading Market Personality**: Specializes in audio data trading and analysis in the audio domain.`,
       },
       {
@@ -201,8 +201,8 @@ export const Descriptions = [
     name: 'Kira',
     character: 'f8',
     money: 1000,
-    assets: `- KITTI Vision Benchmark Suite Autonomous Driving Data: $150
-    - Geospatial Data: $80`,
+    assets: `- KITTI Vision Benchmark Suite Autonomous Driving Data: valued $150
+    - Geospatial Data: valued $80`,
     memories: [
       {
         type: 'identity' as const,
@@ -210,8 +210,8 @@ export const Descriptions = [
         **Autonomous Driving Engineer**:
         - **Areas of Interest**: Computer Vision and Autonomous Driving.
         - **Owned Datasets**: 
-            - KITTI Vision Benchmark Suite Autonomous Driving Data: $150
-            - Geospatial Data: $80
+            - KITTI Vision Benchmark Suite Autonomous Driving Data: valued $150
+            - Geospatial Data: valued $80
         - **Trading Market Personality**: Focuses on data trading and algorithm development in the autonomous driving domain.`,
       },
       {

@@ -29,13 +29,25 @@ export const runAgentBatch = internalAction({
     noSchedule: v.optional(v.boolean()),
   },
   handler: async (ctx, { playerIds, noSchedule }) => {
+    console.log('Next: MemoryDB.');
     const memory = MemoryDB(ctx);
+    console.log('FINISH: MemoryDB.');
     // TODO: single-flight done & action API to avoid write contention.
+    console.log('Next: handleDone.');
     const done: DoneFn = handleDone(ctx, noSchedule);
+    console.log('FINISH: handleDone.');
     // Get the current state of the world
+    // const { players } = await ctx.runQuery(internal.journal.getSnapshot, { playerIds });
+    console.log('Next: get player.');
     const { players } = await ctx.runQuery(internal.journal.getSnapshot, { playerIds });
+    console.log('FINISH: get player.');
     // Segment users by location
+    console.log('Next: divideIntoGroups.');
     const { groups, solos } = divideIntoGroups(players);
+    console.log('FINISH: divideIntoGroups.');
+
+    console.log('Next: Run a conversation for each group.');
+
     // Run a conversation for each group.
     const groupPromises = groups.map(async (group) => {
       const finished = new Set<Id<'agents'>>();
@@ -57,6 +69,10 @@ export const runAgentBatch = internalAction({
         throw e;
       }
     });
+
+
+    console.log('Next: Run soloPromises.');
+
     // For those not in a group, run the solo agent loop.
     const soloPromises = solos.map(async (player) => {
       try {
@@ -69,6 +85,9 @@ export const runAgentBatch = internalAction({
         throw e;
       }
     });
+
+    
+    console.log('Next: Run Promiseall.');
 
     // Make a structure that resolves when the agent yields.
     // It should fail to do any actions if the agent has already yielded.
@@ -140,6 +159,7 @@ export async function handleAgentInteraction(
   memory: MemoryDB,
   done: DoneFn,
 ) {
+  console.log('test: handleAgentInteraction');
   // TODO: pick a better conversation starter
   const leader = players[0];
   for (const player of players) {
@@ -164,15 +184,18 @@ export async function handleAgentInteraction(
       }
     }
   }
+  console.log('test: try turnToFace');
   await ctx.runMutation(internal.journal.turnToFace, {
     playerId: leader.id,
     targetId: players[1].id,
   });
 
+  console.log('test: try makeConversation');
   const conversationId = await ctx.runMutation(internal.journal.makeConversation, {
     playerId: leader.id,
     audience: players.slice(1).map((p) => p.id),
   });
+  console.log('test: try relationshipsByPlayerId');
 
   const playerById = new Map(players.map((p) => [p.id, p]));
   const relations = await ctx.runQuery(internal.journal.getRelationships, {
@@ -192,6 +215,8 @@ export async function handleAgentInteraction(
   let endConversation = false;
   let lastSpeakerId = leader.id;
   let remainingPlayers = players;
+  
+  console.log('test: beginConversation');
 
   while (!endConversation) {
     // leader speaks first
@@ -221,9 +246,10 @@ export async function handleAgentInteraction(
       endConversation = audience.length === 0;
 
       // TODO: remove this player from the audience list
-
       break;
     }
+
+    const properties = await ctx.runQuery(internal.journal.getProperties, { playerId: speaker.id });
 
     // TODO - playerRelations is not used today because of https://github.com/a16z-infra/ai-town/issues/56
     const playerRelations = relationshipsByPlayerId.get(speaker.id) ?? [];
@@ -232,7 +258,8 @@ export async function handleAgentInteraction(
       playerCompletion = await startConversation(ctx, playerRelations, memory, speaker);
     } else {
       // TODO: stream the response and write to the mutation for every sentence.
-      playerCompletion = await converse(ctx, chatHistory, speaker, playerRelations, memory);
+      playerCompletion = await converse(ctx, chatHistory, speaker, playerRelations, memory, properties);
+      // playerCompletion = await converse(ctx, chatHistory, speaker, playerRelations, memory);
     }
 
     const message = await ctx.runMutation(internal.journal.talk, {
@@ -252,28 +279,67 @@ export async function handleAgentInteraction(
   }
 
   if (messages.length > 0) {
+    // for (const player of players) {
+    //   // await memory.rememberConversation(player.name, player.id, player.identity, conversationId);
+    //   const summary = await memory.rememberConversation(player.name, player.id, player.identity, conversationId);
+    //   await done(player.agentId, { type: 'walk', ignore: players.map((p) => p.id) });
+    // }
+
+    // 定义一个数组来存储每个玩家的summary
+    const summaries = [];
+    const properties = [];
     for (const player of players) {
-      await memory.rememberConversation(player.name, player.id, player.identity, conversationId);
+      const summary = await memory.rememberConversation(player.name, player.id, player.identity, conversationId);
+      console.log(`Summary for ${player.name}: ${summary}`);
+      // 将每个summary添加到数组中
+      summaries.push(summary);
       await done(player.agentId, { type: 'walk', ignore: players.map((p) => p.id) });
+      const property = await ctx.runQuery(internal.journal.getProperties, { playerId: player.id });
+      properties.push(property);
     }
-  }
+    // 使用join方法将所有的summary拼接在一起
+    const allSummaries = summaries.join('\n');
+    // console.log('All Summaries:\n', allSummaries);
+    const allProperties = properties.join('\n');
+    
+    console.log('test: ConversationFinished ');
+    // TODOFYX: add tradehistory
+    const needRecordTrade = (await madeTrade(allSummaries));
+    console.log('test: needRecordTrade = ', needRecordTrade);
+    if (needRecordTrade) {
+      const tradedetails = await getTradeDetail(
+        // remainingPlayers,
+        // playerNamesandIds: 
+        // players.map((p) => ({ name: p.name, id: p.id })),
+        players,
+        allSummaries,
+        allProperties,
+      );
+      // console.log('test: players = ',players);
+      console.log('test: Tradedetail = ',tradedetails);
+        
+    for (const tradedetail of tradedetails) {
+        await ctx.runMutation(internal.journal.recordTrade, {
+          sellerId: tradedetail.sellerId,
+          sellerName: tradedetail.sellerName,
+          buyerId: tradedetail.buyerId,
+          buyerName: tradedetail.buyerName,
+          price: tradedetail.price,
+          value: tradedetail.value,
+          item: tradedetail.item,
+        });
+        await ctx.runMutation(internal.journal.updateProperties, {
+          sellerId: tradedetail.sellerId,
+          buyerId: tradedetail.buyerId,
+          price: tradedetail.price,
+          value: tradedetail.value,
+          item: tradedetail.item,
+        });
+      }
+      
+    }
 
-  const chatHistory = chatHistoryFromMessages(messages); 
-  // TODOFYX: add tradehistory
-  const needRecordTrade = (await madeTrade(chatHistory));
-  if (needRecordTrade) {
-    const tradedetail = await getTradeDetail(
-      remainingPlayers,
-      chatHistory,
-    );
-    await ctx.runMutation(internal.journal.recordTrade, {
-      sellerId: tradedetail.sellerId,
-      buyerId: tradedetail.buyerId,
-      price: tradedetail.price,
-      item: tradedetail.item,
-    });
   }
-
 }
 
 type DoneFn = (
@@ -284,6 +350,7 @@ type DoneFn = (
 ) => Promise<void>;
 
 function handleDone(ctx: ActionCtx, noSchedule?: boolean): DoneFn {
+  console.log('start DoneFn');
   const doIt: DoneFn = async (agentId, activity) => {
     // console.debug('handleDone: ', agentId, activity);
     if (!agentId) return;
@@ -305,13 +372,16 @@ function handleDone(ctx: ActionCtx, noSchedule?: boolean): DoneFn {
         const _exhaustiveCheck: never = activity;
         throw new Error(`Unhandled activity: ${JSON.stringify(activity)}`);
     }
+    console.log('start agentDone');
     await ctx.runMutation(internal.engine.agentDone, {
       agentId,
       otherAgentIds: walkResult.nextCollision?.agentIds,
       wakeTs: walkResult.nextCollision?.ts ?? walkResult.targetEndTs,
       noSchedule,
     });
+    console.log('finish agentDone');
   };
+  console.log('finish DoneFn');
   // Simple serialization: only one agent finishes at a time.
   let queue = new Set<Promise<unknown>>();
   return async (agentId, activity) => {
