@@ -11,7 +11,7 @@ import { data as f8SpritesheetData } from './spritesheets/f8';
 // FYX 对人物描述进行修改，可根据需要进行调整
 export const Descriptions = [
   {
-    name: 'Alex-DATAA',
+    name: 'Alex-A-DATA',
     character: 'f5',
     money: 1000,
     assets: `DATA (valued 50)`,
@@ -27,7 +27,7 @@ export const Descriptions = [
       {
         type: 'relationship' as const,
         description: 'You like lucky',
-        playerName: 'Lucky-DATAB',
+        playerName: 'Lucky-B-DATA',
       },
       {
         type: 'plan' as const,
@@ -37,7 +37,7 @@ export const Descriptions = [
     position: { x: 10, y: 10 },
   },
   {
-    name: 'Lucky-DATAB',
+    name: 'Lucky-B-DATA',
     character: 'f1',
     money: 1000,
     assets: `DATA (valued 50)`,
@@ -57,7 +57,7 @@ export const Descriptions = [
     position: { x: 12, y: 10 },
   },
   {
-    name: 'Bob-DATAC',
+    name: 'Bob-C-DATA',
     character: 'f4',
     money: 1000,
     assets: `data (valued 50)`,
@@ -77,7 +77,7 @@ export const Descriptions = [
     position: { x: 6, y: 4 },
   },
   {
-    name: 'Stella-MODELA',
+    name: 'Stella-A-MODEL',
     character: 'f6',
     money: 1000,
     assets: `MODEL A level 1(valued 50)`,
@@ -97,7 +97,7 @@ export const Descriptions = [
     position: { x: 6, y: 6 },
   },
   {
-    name: 'Kurt-MODELB',
+    name: 'Kurt-B-MODEL',
     character: 'f2',
     money: 1000,
     assets: `MODEL B level 1(valued 50)`,
@@ -117,7 +117,7 @@ export const Descriptions = [
     position: { x: 8, y: 6 },
   },
   {
-    name: 'Alice-MODELC',
+    name: 'Alice-C-MODEL',
     character: 'f3',
     money: 1000,
     assets: `- MODEL C level 1(valued 50)`,

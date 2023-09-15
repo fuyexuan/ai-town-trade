@@ -424,7 +424,7 @@ export const updateProperties = internalMutation({
 
       if (buyer_name.endsWith("CLIENT")) {
         await ctx.db.patch(buyer_propertyId, {
-          money: buyer_money - price + value * 1.5,
+          money: buyer_money - price + value * 1.5, //client购买服务后自己的钱增加
           assets: `${buyer_assets}, ${buyer_gain}`,
         });
       }
