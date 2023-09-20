@@ -158,8 +158,31 @@ export async function converse(
   // FYX prompt基本都进行了修改，根据需要的功能可进行修改 
   // 这里写的比较多，可能后期需要调整，token可能会不够
   // 待研究更合理的prompt
-  prefixPrompt += `NOW You have $${properties.money}. And you have ${properties.assets}.`;
-  prefixPrompt += `You CAN'T buy something that costs more than the money you have.`;
+  prefixPrompt += `Right now, You have $${properties.money} and ${properties.assets}.`;
+  prefixPrompt += `You cannot purchase anything that costs more than the money you currently have.`;
+
+  if (player.name.endsWith("CLIENT")) {
+    prefixPrompt += `You can buy model service from the model owner, and sell data to the data owner, but you cannot engage in transactions with other clients.\n`;
+    prefixPrompt += `When you obtain model services, your money increases by 75 times the model's level.\n`;
+  }
+  else if (player.name.endsWith("MODEL")) {
+    prefixPrompt += `You can buy data from data owner, and sell model service to client, but you cannot engage in transactions with other model owners.\n`;
+    prefixPrompt += `If you got data, you will possess a model with a level equal to the highest level observed + 1.\n`;
+  }
+  else if (player.name.endsWith("DATA")) {
+    prefixPrompt += `You can buy data from client, and sell data to model owner, but you cannot engage in transactions with other data owners.\n`;
+  }
+
+  prefixPrompt += `Your goal is to earn more money.\n`;
+  prefixPrompt += `However, you can't directly exchange items with others; it must be a goods-money transaction model.\n`;
+  
+  prefixPrompt += `You are trying to make a deal in one conversation, so you must negotiate efficiently.\n`;
+  prefixPrompt += `When you make a deal, you exchange money and items directly without using another platform. The exchange happens instantly; there's no need to arrange another time and place. Just say, "Here is the item/money.\n`;
+
+  // 根据卖方市场和买方市场的不同场景选择不同的prompt
+  prefixPrompt += `The recommand price is the value of the goods.`
+  prefixPrompt += `This is a seller's market, so sellers can offer higher prices to sell data that buyers have no choice but to buy at a higher price.`;
+  // prefixPrompt += `This is a buyer's market, so buyers can offer lower prices to purchase data that sellers have no choice but to sell at a lower price.`;
   
   if (relevantReflections.length > 0) {
     prefixPrompt += relevantReflections;
@@ -176,30 +199,6 @@ export async function converse(
   prefixPrompt += `Last time you chatted with some of ${nearbyPlayersNames} it was ${lastConversationTs}. It's now ${Date.now()}. You can cut this conversation short if you talked to this group of people within the last day. \n}`;
 
   prefixPrompt += `Below are relevant memories to this conversation you are having right now: ${relevantMemories}\n`;
-
-  if (player.name.endsWith("CLIENT")) {
-    prefixPrompt += `You can buy model service from model owner, and sell data to data owner, but you can't make deal with other Client.\n`;
-    prefixPrompt += `If you got model service, your money increases by the level of the model *75.\n`;
-  }
-  else if (player.name.endsWith("MODEL")) {
-    prefixPrompt += `You can buy data from data owner, and sell model service to client, but you can't make deal with other Model owner.\n`;
-    prefixPrompt += `If you got data, you will possess a model with a level equal to the highest level observed + 1.\n`;
-  }
-  else if (player.name.endsWith("DATA")) {
-    prefixPrompt += `You can buy data from client, and sell data to model owner, but you can't make deal with other Data owner.\n`;
-  }
-
-  prefixPrompt += `Your goal is gaining more money.\n`;
-  prefixPrompt += `But you can't exchange things directly with others, it has to be a goods-money transaction model.\n`;
-  
-  prefixPrompt += `You are trying to make the deal in one conversation so you must talk effeciantly.\n`;
-  prefixPrompt += `When you make a deal, you exchange money and things directly without other platform and you exchange NOW. No need to arrange another time and place to make the deal.Just say here is the thing/money.\n`;
-
-  // 根据卖方市场和买方市场的不同场景选择不同的prompt
-  prefixPrompt += `The recommand price is the value of the goods.`
-  // prefixPrompt += `This is a Seller's Market so the seller can offer a higher price to sell the data that buyer has no choice but to buy the data in a high price.`;
-  prefixPrompt += `This is a Buyer's Market so the buyer can offer a lower price to buy the data that seller has no choice but to sell the data in a low price.`;
-
 
   prefixPrompt +=
     'Below are the current chat history between you and the other folks mentioned above. DO NOT greet the other people more than once. Only greet ONCE. Do not use the word Hey too often. Response should be brief and within 200 characters: \n';
@@ -262,6 +261,118 @@ export async function madeTrade(summary: string): Promise<boolean> {
 }
 
 // FYX 新增加函数，功能：获得交易细节，以JSON格式返回
+// export async function getTradeDetail(
+//   players: Player[],
+//   summary: string,
+//   property: string,
+// // ): Promise<Trade> {
+// ){
+//   const playerNamesandIds =  players.map((p) => ({ name: p.name, id: p.id }));
+//   console.log('test: playerNamesandIds = ',playerNamesandIds);
+//   // const tmpprompt = ` 
+//   // If buyer got data from Alex, buyer will gain a model with a level equal to the highest level plus 1.
+//   // If buyer got data from Lucky, buyer will gain a model with a level equal to the highest level plus 2.
+//   // If buyer got data from Bob, buyer will gain a model with a level equal to the highest level plus 3.
+//   // `;
+//     // if the seller is Alex the value is 50,
+//     // if the seller is Lucky the value is 100,
+//     // if the seller is Bob the value is 150,
+//   // If the seller is data owner or client, the value is 50.
+//   // If the seller is a model owner, the value is the level of the traded model * 75.
+//   const tmpprompt = ` 
+//   If model owner got data from data owner, model owner will gain a model with a level equal to the highest level observed + 1.
+//   `;
+//   const promptStr = `[no prose]\n [Output only JSON]
+
+//   ${summary}
+
+//   Here is the summary of the conversation.
+
+//   ${JSON.stringify(playerNamesandIds)}
+//   Here is a list of people in the conversation, 
+//   return BOTH name and id of the buyer and the seller, price, the item they traded, the value of the item, and buyer's gain.
+//   based on the trade conversation history provided below.
+//   The value and price should be a number or float, no extra symbol.
+//   If they trade multiple items at one price, return in ONE string.
+//   If they trade multiple items at different price like A in $10, B in $20, return in multiple records like [{...,price:10,item:"A"},{...,price:20,item:"B"}];
+//   If they exchange their data without give out money, then the price is 0. 
+//   The value of the traded data is 50.
+//   The value of the traded model is its level * 75.
+//   If the buyer is a data owner, the item and buyer's gain remain the same,
+//    if the buyer is a model owner, buyer's gain should be a higher-level model(in the format"**model level x").${tmpprompt}
+//    if the buyer is a client, buyer's gain should be "data".
+//   ONLY return those who participated in the transaction, as there may have been people who participated in the conversation but did not participate in the transaction. 
+  
+//   Return in JSON format, 
+//   example: {"buyerName": "Alex", 
+//              buyerId: "1234", 
+//              sellerName: "Bob", 
+//              sellerId: "5678", 
+//              price: 100, 
+//              value: 100, 
+//              item: "data", 
+//              buyer_gain:"model level 6"}`;
+  
+//   const prompt: LLMMessage[] = [
+//     {
+//       role: 'user',
+//       content: promptStr,
+//     },
+//   ];
+//   const { content } = await chatCompletion({ messages: prompt, max_tokens: 300 });
+//   console.log('test: getTradeDetail prompt = ',prompt);
+//   console.log('test: getTradeDetail content = ',content);
+//   console.log('test: getTradeDetail property = ',property);
+
+//   let data = [];
+//   try {
+//     data = JSON.parse(content);
+//     if (!Array.isArray(data)){
+//       data = [data];
+//     }
+//   } catch (e) {
+//     console.error('Error parsing JSON content:', e, 'content = ',JSON.stringify(content));
+//   }
+
+//   // console.log('test: getTradeDetail data = ', data);
+
+//   const results = data.map((resultitem: TradeRecord) => {
+//     let buyerId = 'nobuyer';
+//     let sellerId = 'noseller';
+//     let item = 'nothing';
+//     let buyer_gain = 'nothing';
+//     let buyerName = 'nobuyer';
+//     let sellerName = 'noseller';
+//     let price = 1;
+//     let value = 1;
+//     try {
+//       buyerId = resultitem.buyerId || buyerId;
+//       sellerId = resultitem.sellerId || sellerId;
+//       item = resultitem.item || item;
+//       buyer_gain = resultitem.buyer_gain || buyer_gain;
+//       buyerName = resultitem.buyerName || buyerName;
+//       sellerName = resultitem.sellerName || sellerName;
+//       price = resultitem.price || price;
+//       value = resultitem.value || value;
+//     } catch (e) {
+//       console.error('Error parsing TradeDetail: ', e);
+//     }
+//     return {
+//       sellerId,
+//       sellerName,
+//       buyerId,
+//       buyerName,
+//       price,
+//       value,
+//       item,
+//       buyer_gain,
+//     };
+//   });
+//   // console.log('test: getTradeDetail results = ',results);
+//   return results;
+
+// }
+
 export async function getTradeDetail(
   players: Player[],
   summary: string,
@@ -270,49 +381,58 @@ export async function getTradeDetail(
 ){
   const playerNamesandIds =  players.map((p) => ({ name: p.name, id: p.id }));
   console.log('test: playerNamesandIds = ',playerNamesandIds);
-  // const tmpprompt = ` 
-  // If buyer got data from Alex, buyer will gain a model with a level equal to the highest level plus 1.
-  // If buyer got data from Lucky, buyer will gain a model with a level equal to the highest level plus 2.
-  // If buyer got data from Bob, buyer will gain a model with a level equal to the highest level plus 3.
-  // `;
-    // if the seller is Alex the value is 50,
-    // if the seller is Lucky the value is 100,
-    // if the seller is Bob the value is 150,
-  // If the seller is data owner or client, the value is 50.
-  // If the seller is a model owner, the value is the level of the traded model * 75.
-  const tmpprompt = ` 
-  If model owner got data from data owner, model owner will gain a model with a level equal to the highest level observed + 1.
-  `;
   const promptStr = `[no prose]\n [Output only JSON]
+  Problem: Parsing Historical Data Trade Conversations
 
-  ${summary}
+This is a summary of a conversation where various trades involving data and models took place. Your task is to parse these trades and extract relevant information.
 
-  Here is the summary of the conversation.
+Conversation Summary:
 
-  ${JSON.stringify(playerNamesandIds)}
-  Here is a list of people in the conversation, 
-  return BOTH name and id of the buyer and the seller, price, the item they traded, the value of the item, and buyer's gain.
-  based on the trade conversation history provided below.
-  The value and price should be a number or float, no extra symbol.
-  If they trade multiple items at one price, return in ONE string.
-  If they trade multiple items at different price like A in $10, B in $20, return in multiple records like [{...,price:10,item:"A"},{...,price:20,item:"B"}];
-  If they exchange their data without give out money, then the price is 0. 
-  The value of the traded data is 50.
-  The value of the traded model is its level * 75.
-  If the buyer is a data owner, the item and buyer's gain remain the same,
-   if the buyer is a model owner, buyer's gain should be a higher-level model(in the format"**model level x").${tmpprompt}
-   if the buyer is a client, buyer's gain should be "data".
-  ONLY return those who participated in the transaction, as there may have been people who participated in the conversation but did not participate in the transaction. 
-  
-  Return in JSON format, 
-  example: {"buyerName": "Alex", 
-             buyerId: "1234", 
-             sellerName: "Bob", 
-             sellerId: "5678", 
-             price: 100, 
-             value: 100, 
-             item: "data", 
-             buyer_gain:"model level 6"}`;
+"${summary}"
+
+Table of Person Names and IDs:
+
+${JSON.stringify(playerNamesandIds)}
+
+Please parse these trades and return the following information:
+
+- Buyer's name and ID
+- Seller's name and ID
+- Price of the trade
+- Value of the item traded
+- Item traded
+- Buyer's gain
+
+Please note the following rules:
+
+- If the buyer is the owner of data, the item and buyer's gain remain the same.
+- If the buyer is the owner of a model, the buyer's gain should be a higher-level model (in the format "model level x"). If the model owner received data from the data owner, the model owner will gain a model with a level equal to the highest observed level plus 1.
+- If the buyer is a client, the buyer's gain should be "data."
+- Value of the data is 50, Value of the model is 75 times the model's level.
+
+Return only those who participated in the transaction, as there may have been people who participated in the conversation but did not participate in the trade.
+
+Please return the results in JSON format, for example:
+
+{
+
+  "buyerName": "Alice",
+
+  "buyerId": "1234",
+
+  "sellerName": "Bob",
+
+  "sellerId": "5678",
+
+  "price": 0,
+
+  "value": 50,
+
+  "item": "data",
+
+  "buyer_gain": "model level 2"
+
+}`;
   
   const prompt: LLMMessage[] = [
     {
@@ -373,4 +493,3 @@ export async function getTradeDetail(
   return results;
 
 }
-

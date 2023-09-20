@@ -29,16 +29,6 @@ export const TradeHistory = Table('tradehistory', {
   price: v.number(),
   value: v.number(),
   item: v.string(),
-  // assets: v.union(
-  //   v.object({
-  //     type: v.literal("data"),
-  //     value: v.id('data'),
-  //   }),
-  //   v.object({
-  //     type: v.literal("model"),
-  //     value: v.id('model'),
-  //   })
-  // ),
 });
 
 export const Worlds = Table('worlds', {
@@ -330,3 +320,4 @@ export default defineSchema(
   // Instead, we just create new worlds with the correct data schema.
   { schemaValidation: true },
 );
+

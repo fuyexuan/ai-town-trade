@@ -1,6 +1,7 @@
 // That's right! No imports and no dependencies 🤯
 
 // FYX 增加对azure openai 的支持
+// azure暂时坏了，改回openai
 
 export async function chatCompletion(
   body: Omit<CreateChatCompletionRequest, 'model'> & {
@@ -14,21 +15,21 @@ export async function chatCompletion(
         '    npx convex dashboard\n or https://dashboard.convex.dev',
     );
   }
-
-  // body.model = body.model ?? 'gpt-3.5-turbo-16k'; // openai 模型名
-  body.model = body.model ?? 'gpt-35-turbo'; // azure-openai 模型名
+  
+  body.model = body.model ?? 'gpt-3.5-turbo-16k'; // openai 模型名
+  // body.model = body.model ?? 'gpt-35-turbo'; // azure-openai 模型名
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
-    // const result = await fetch('https://api.openai.com/v1/chat/completions', {
-    const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx/chat/completions?api-version=2023-05-15', {
+    const result = await fetch('https://api.openai.com/v1/chat/completions', {
+    // const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx/chat/completions?api-version=2023-05-15', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-        'api-key': process.env.OPENAI_API_KEY ?? "",
+        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        // 'api-key': process.env.OPENAI_API_KEY ?? "",
       },
 
       body: JSON.stringify(body),
@@ -62,6 +63,13 @@ export async function fetchEmbeddingBatch(texts: string[]) {
     );
   }
   // console.log('Embedding text:',texts);
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+    // 'api-key': process.env.OPENAI_API_KEY ?? "",
+  };
+
   const {
     result: json,
     retries,
@@ -71,11 +79,13 @@ export async function fetchEmbeddingBatch(texts: string[]) {
     const result = await fetch('https://api.openai.com/v1/embeddings', {
     // const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx2/embeddings?api-version=2023-05-15', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-        // 'api-key': process.env.OPENAI_API_KEY ?? "",
-      },
+      // headers: {
+      //   'Content-Type': 'application/json',
+      //   Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+      //   // 'api-key': process.env.OPENAI_API_KEY ?? "",
+      // },
+      headers: headers,
+
 
       body: JSON.stringify({
         model: 'text-embedding-ada-002',

@@ -192,7 +192,7 @@ export async function handleAgentInteraction(
   let endConversation = false;
   let lastSpeakerId = leader.id;
   let remainingPlayers = players;
-  
+
   while (!endConversation) {
     // leader speaks first
     const chatHistory = chatHistoryFromMessages(messages);

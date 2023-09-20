@@ -80,12 +80,15 @@ export function MemoryDB(ctx: ActionCtx): MemoryDB {
       const texts = memoriesWithoutEmbedding.map((memory) => memory.description);
       const { embeddings } = await fetchEmbeddingBatchWithCache(ctx, texts);
       // NB: The cache gets populated by addMemories, so no need to do it here.
+      
+      console.debug("now: asyncMap");
 
       const memories = await asyncMap(memoriesWithoutEmbedding, async (memory, idx) => {
         const embedding = embeddings[idx];
 
         if (memory.importance === undefined) {
           // TODO: make a better prompt based on the user's memories
+          console.debug("now: chatCompletion");
           const { content: importanceRaw } = await chatCompletion({
             messages: [
               { role: 'user', content: memory.description },
@@ -97,6 +100,8 @@ export function MemoryDB(ctx: ActionCtx): MemoryDB {
             ],
             max_tokens: 1,
           });
+          
+          console.debug("now finish: chatCompletion");
           let importance = NaN;
           for (let i = 0; i < importanceRaw.length; i++) {
             const number = parseInt(importanceRaw[i]);
@@ -115,6 +120,7 @@ export function MemoryDB(ctx: ActionCtx): MemoryDB {
           return { ...memory, embedding, importance: memory.importance };
         }
       });
+      
       const embeddingIds = await ctx.runMutation(internal.lib.memory.addMemories, { memories });
       if (externalEmbeddingStore) {
         await externalEmbeddingStore(
