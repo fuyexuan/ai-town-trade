@@ -16,20 +16,22 @@ export async function chatCompletion(
     );
   }
   
-  body.model = body.model ?? 'gpt-3.5-turbo-16k'; // openai 模型名
-  // body.model = body.model ?? 'gpt-35-turbo'; // azure-openai 模型名
+  // console.debug('chatCompletion body:',body);
+
+  // body.model = body.model ?? 'gpt-3.5-turbo-16k'; // openai 模型名
+  body.model = body.model ?? 'gpt-35-turbo'; // azure-openai 模型名
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
-    const result = await fetch('https://api.openai.com/v1/chat/completions', {
-    // const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx/chat/completions?api-version=2023-05-15', {
+    // const result = await fetch('https://api.openai.com/v1/chat/completions', {
+    const result = await fetch('https://wxh.openai.azure.com/openai/deployments/GPT35/chat/completions?api-version=2023-05-15', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-        // 'api-key': process.env.OPENAI_API_KEY ?? "",
+        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        'api-key': process.env.OPENAI_API_KEY ?? "", 
       },
 
       body: JSON.stringify(body),
@@ -62,27 +64,28 @@ export async function fetchEmbeddingBatch(texts: string[]) {
         '    npx convex dashboard\n or https://dashboard.convex.dev',
     );
   }
-  // console.log('Embedding text:',texts);
+  // console.debug('Embedding text:',texts);
 
   const headers = {
     'Content-Type': 'application/json',
-    Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-    // 'api-key': process.env.OPENAI_API_KEY ?? "",
+    // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+    'api-key': process.env.OPENAI_API_KEY ?? "",
   };
 
+  // console.log(`Embedding headers:`, headers);
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
     // 由于azure的openai接口限制16维数据，一开始初始化人物信息时需要先用openai的接口，初始化完成后改为azure运行
-    const result = await fetch('https://api.openai.com/v1/embeddings', {
-    // const result = await fetch('https://aitown4trial.openai.azure.com/openai/deployments/AI_Town_fyx2/embeddings?api-version=2023-05-15', {
+    // const result = await fetch('https://api.openai.com/v1/embeddings', {
+    const result = await fetch('https://wxh.openai.azure.com/openai/deployments/emb/embeddings?api-version=2023-05-15', {
       method: 'POST',
       // headers: {
       //   'Content-Type': 'application/json',
-      //   Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-      //   // 'api-key': process.env.OPENAI_API_KEY ?? "",
+        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        // 'api-key': process.env.OPENAI_API_KEY ?? "",
       // },
       headers: headers,
 
@@ -92,6 +95,8 @@ export async function fetchEmbeddingBatch(texts: string[]) {
         input: texts.map((text) => text.replace(/\n/g, ' ')),
       }),
     });
+    
+  // console.debug('Embedding headers:',headers);
     if (!result.ok) {
       throw {
         retry: result.status === 429 || result.status >= 500,

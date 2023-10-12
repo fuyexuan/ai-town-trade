@@ -181,7 +181,9 @@ export async function converse(
 
   // 根据卖方市场和买方市场的不同场景选择不同的prompt
   prefixPrompt += `The recommand price is the value of the goods.`
-  prefixPrompt += `This is a seller's market, so sellers can offer higher prices to sell data that buyers have no choice but to buy at a higher price.`;
+  // prefixPrompt += `The recommand price is the value of the goods * 1.2 .`
+  // prefixPrompt += `The recommand price is the value of the goods * 0.8 .`
+  // prefixPrompt += `This is a seller's market, so sellers can offer higher prices to sell data that buyers have no choice but to buy at a higher price.`;
   // prefixPrompt += `This is a buyer's market, so buyers can offer lower prices to purchase data that sellers have no choice but to sell at a lower price.`;
   
   if (relevantReflections.length > 0) {
@@ -215,7 +217,8 @@ export async function converse(
     },
   ];
   const stop = stopWords(nearbyPlayers.map((p) => p.name));
-  const { content } = await chatCompletion({ messages: prompt, max_tokens: 300, stop });
+  const { content } = await chatCompletion({ messages: prompt, max_tokens: 300, stop});
+  // const { content } = await chatCompletion({ messages: prompt, max_tokens: 300, stop ,temperature: 0.3});
   // console.debug('converse result through chatgpt: ', content);
   return { content: trimContent(content, stop), memoryIds: memories.map((m) => m.memory._id) };
 }

@@ -29,10 +29,10 @@ export const Descriptions = [
         description: 'You like lucky',
         playerName: 'Lucky-B-DATA',
       },
-      {
-        type: 'plan' as const,
-        description: 'You want to find love.',
-      },
+      // {
+      //   type: 'plan' as const,
+      //   description: 'You want to find love.',
+      // },
     ],
     position: { x: 10, y: 10 },
   },
