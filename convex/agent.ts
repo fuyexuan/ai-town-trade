@@ -35,16 +35,40 @@ export const runAgentBatch = internalAction({
     // Get the current state of the world
     const { players } = await ctx.runQuery(internal.journal.getSnapshot, { playerIds });
     // Segment users by location
-    const { groups, solos } = divideIntoGroups(players);
+    
+    // const bob = players.find(player => player.name[0] === 'B');
+    // if (bob){
+    //   await ctx.runMutation(internal.journal.stop, {
+    //     playerId: bob.id,
+    //   });
+    // }
+
+    console.debug('runAgentBatch' ,'players:',players.map((p) => p.name));
+    var i:number; 
+    let hasError = false; // 用于跟踪是否发生错误
+    for(i = 1; i < 8; i++) {
+      if (players.length<8){
+        console.debug('players.length < 8, exiting the loop.');
+        break;
+      }
+      console.debug('now :',i ,'players:',players.map((p) => p.name));
+      
+      const { groups, solos } = divideIntoGroups(players, i);
+      const names = groups.map(group =>
+        group.map(item => item.name)
+      ).flat();
+      console.debug('now :',i ,'group:',names);
     // Run a conversation for each group.
     const groupPromises = groups.map(async (group) => {
       const finished = new Set<Id<'agents'>>();
       try {
+        console.debug('group:',group.map((p) => p.name));
         await handleAgentInteraction(ctx, group, memory, (agentId, activity) => {
           if (agentId) finished.add(agentId);
           return done(agentId, activity);
         });
       } catch (e) {
+        hasError = true; // 标记发生错误
         console.error(
           'group failed, going for a walk: ',
           group.map((p) => p.agentId),
@@ -64,6 +88,7 @@ export const runAgentBatch = internalAction({
           await handleAgentSolo(ctx, player, memory, done);
         }
       } catch (e) {
+        hasError = true; // 标记发生错误
         console.error('agent failed, going for a walk: ', player.agentId);
         await done(player.agentId!, { type: 'walk', ignore: [] });
         throw e;
@@ -77,40 +102,96 @@ export const runAgentBatch = internalAction({
     // While testing if you want failures to show up more loudly, use this instead:
     await Promise.all([...groupPromises, ...soloPromises]);
     // Otherwise, this will allow each group / solo to complete:
-    // const results = await Promise.allSettled([...groupPromises, ...soloPromises]);
-    // for (const result of results) {
-    //   if (result.status === 'rejected') {
-    //     console.error(result.reason, playerIds);
-    //   }
-    // }
+    const results = await Promise.allSettled([...groupPromises, ...soloPromises]);
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        console.error('Promise.all error');
+        console.error(result.reason, playerIds);
+      }
+    }
 
     console.debug(
       `agent batch (${groups.length}g ${solos.length}s) finished: ${Date.now() - start}ms`,
     );
+
+    // if (hasError) {
+    //   console.error('Error occurred, exiting the loop.');
+    //   break;
+    // }
+
+    }
+
+    
   },
 });
 
-function divideIntoGroups(players: Player[]) {
+function divideIntoGroups(players: Player[], now: number) {
   const playerById = new Map(players.map((p) => [p.id, p]));
   const groups: Player[][] = [];
   const solos: Player[] = [];
-  while (playerById.size > 0) {
-    const player = playerById.values().next().value;
-    playerById.delete(player.id);
-    const nearbyPlayers = getNearbyPlayers(player.motion, [...playerById.values()]);
-    if (nearbyPlayers.length > 0) {
-      // If you only want to do 1:1 conversations, use this:
-      // groups.push([player, nearbyPlayers[0]]);
-      // playerById.delete(nearbyPlayers[0].id);
-      // otherwise, do more than 1:1 conversations by adding them all:
-      groups.push([player, ...nearbyPlayers]);
-      for (const nearbyPlayer of nearbyPlayers) {
-        playerById.delete(nearbyPlayer.id);
-      }
-    } else {
-      solos.push(player);
-    }
+  // while (playerById.size > 0) {
+  //   const player = playerById.values().next().value;
+  //   playerById.delete(player.id);
+  //   const nearbyPlayers = getNearbyPlayers(player.motion, [...playerById.values()]);
+  //   if (nearbyPlayers.length > 0) {
+  //     // If you only want to do 1:1 conversations, use this:
+  //     // groups.push([player, nearbyPlayers[0]]);
+  //     // playerById.delete(nearbyPlayers[0].id);
+  //     // otherwise, do more than 1:1 conversations by adding them all:
+  //     groups.push([player, ...nearbyPlayers]);
+  //     for (const nearbyPlayer of nearbyPlayers) {
+  //       playerById.delete(nearbyPlayer.id);
+  //     }
+  //   } else {
+  //     solos.push(player);
+  //   }
+  // }
+  console.debug('now:', now);
+  // console.debug('playerById:', playerById);
+  const bob = players.find(player => player.name[0] === 'B');
+  const player = playerById.values().next().value;
+  // playerById.delete(player.id);
+  if (bob) playerById.delete(bob.id);
+  
+  if (playerById.size === 0) {
+    solos.push(player);
+    return { groups, solos };
   }
+  if (playerById.size < 7) {
+    solos.push(player);
+    while(playerById.size >0){
+      const now_player = playerById.values().next().value;
+      solos.push(now_player);
+      playerById.delete(now_player.id);
+    }
+    return { groups, solos };
+  }
+  var i:number;
+  for(i = 1; i < 8; i++) {
+    if (playerById.size === 0) {
+      // playerById 是空的
+      console.log("i:",i,"playerById 是空的");
+      break;
+    }
+    const now_player = playerById.values().next().value;
+    console.debug('now_player.id:',now_player.id);
+    if (i == now) {
+      // groups.push([player, now_player]);
+      groups.push([bob, now_player]);
+    }
+    else {
+      solos.push(now_player);
+    }
+    playerById.delete(now_player.id);
+  }
+  const names = groups.map(group =>
+    group.map(item => item.name)
+  ).flat();
+  console.debug('groups:',names);
+  // const names_solo = groups.map(group =>
+  //   group.map(item => item.name)
+  // ).flat();
+  console.debug('solos:',solos.map((p) => p.name));
   return { groups, solos };
 }
 
@@ -127,11 +208,16 @@ async function handleAgentSolo(ctx: ActionCtx, player: Player, memory: MemoryDB,
   // Later: handle object ownership?
   // Based on plan and observations, determine next action:
   //   if so, add new memory for new plan, and return new action
-  const walk = player.motion.type === 'stopped' || player.motion.targetEndTs < Date.now();
+
+  // const walk = (player.name[0] === 'B') ? false :  (player.motion.type === 'stopped' || player.motion.targetEndTs < Date.now());
+  const walk =  (player.motion.type === 'stopped' || player.motion.targetEndTs < Date.now());
+  
+  
   // Ignore everyone we last said something to.
   const ignore =
     player.motion.type === 'walking' ? player.motion.ignore : player.lastChat?.message.to ?? [];
-  await done(player.agentId, { type: walk ? 'walk' : 'continue', ignore });
+  // await done(player.agentId, { type: (player.name[0] === 'B') && walk ? 'walk' : 'continue', ignore });
+  await done(player.agentId, { type:  walk ? 'walk' : 'continue', ignore });
 }
 
 export async function handleAgentInteraction(
@@ -142,17 +228,22 @@ export async function handleAgentInteraction(
 ) {
   // TODO: pick a better conversation starter
   const leader = players[0];
+  // const bob = players.find(player => player.name[0] === 'B') || players[0];
+  // await ctx.runMutation(internal.journal.stop, {
+  //   playerId: bob.id,
+  // });
+  console.debug('leader.id:',leader.id);
   for (const player of players) {
     const imWalkingHere =
       player.motion.type === 'walking' && player.motion.targetEndTs > Date.now();
     // Get players to walk together and face each other
     if (player.agentId) {
       if (player === leader) {
-        if (imWalkingHere) {
+        // if (imWalkingHere) {
           await ctx.runMutation(internal.journal.stop, {
             playerId: player.id,
           });
-        }
+        // }
       } else {
         await ctx.runMutation(internal.journal.walk, {
           agentId: player.agentId,
@@ -226,6 +317,8 @@ export async function handleAgentInteraction(
 
     // FYX
     const properties = await ctx.runQuery(internal.journal.getProperties, { playerId: speaker.id });
+    
+    // console.debug('properties body:',properties);
 
     // TODO - playerRelations is not used today because of https://github.com/a16z-infra/ai-town/issues/56
     const playerRelations = relationshipsByPlayerId.get(speaker.id) ?? [];

@@ -251,6 +251,8 @@ export const walk = internalMutation({
     const ts = Date.now();
     const agentDoc = (await ctx.db.get(agentId))!;
     const { playerId, worldId } = agentDoc;
+    
+    console.log("walk agentDoc:",agentDoc);
     const world = (await ctx.db.get(worldId))!;
     const map = (await ctx.db.get(world.mapId))!;
     const otherPlayers = await asyncMap(
@@ -264,6 +266,8 @@ export const walk = internalMutation({
       ? getPoseFromMotion(await getLatestPlayerMotion(ctx.db, target), ts).position
       : getRandomPosition(map);
     const ourMotion = await getLatestPlayerMotion(ctx.db, playerId);
+    
+    console.log("walk targetPosition:",targetPosition);
     const { route, distance } = findRoute(
       map,
       ourMotion,

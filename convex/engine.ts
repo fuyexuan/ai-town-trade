@@ -33,6 +33,7 @@ export const tick = internalMutation({
       console.debug("Didn't tick: all agents thinking");
       return;
     }
+    // console.debug("tick: agentDocs ", agentDocs.map((a) => a.playerId));
     const agentsEagerToWake = agentDocs.filter((a) => a.nextWakeTs && a.nextWakeTs <= ts);
     const agentIdsToWake = new Set([
       ...agentsEagerToWake.flatMap((a) => [a._id, ...(a.alsoWake ?? [])]),
@@ -48,12 +49,14 @@ export const tick = internalMutation({
       console.debug("Didn't tick: spurious, no agents eager to wake up");
       return;
     }
+    // console.debug("tick: agentsToWake ", agentIdsToWake);
     const agentsToWake = pruneNull(await asyncMap(agentIdsToWake, ctx.db.get)).filter(
       (a) => !a.thinking,
     );
     for (const agentDoc of agentsToWake) {
       await ctx.db.patch(agentDoc._id, { thinking: true, lastWakeTs: ts });
     }
+    console.debug("tick: agentsToWake ", agentsToWake.map((a) => a._id));
     const playerIds = agentsToWake.map((a) => a.playerId);
     await ctx.scheduler.runAfter(0, internal.agent.runAgentBatch, { playerIds, noSchedule });
   },
@@ -81,8 +84,12 @@ export const agentDone = internalMutation({
   },
   handler: async (ctx, args) => {
     const agentDoc = await ctx.db.get(args.agentId);
+    // console.debug('agentDone agentDoc:', agentDoc);
     if (!agentDoc) throw new Error(`Agent ${args.agentId} not found`);
     if (!agentDoc.thinking) {
+      console.debug('Agent was not thinking, break');
+      return;
+
       throw new Error('Agent was not thinking: did you call agentDone twice for the same agent?');
     }
 

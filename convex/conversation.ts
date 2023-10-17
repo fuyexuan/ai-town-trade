@@ -158,22 +158,33 @@ export async function converse(
   // FYX prompt基本都进行了修改，根据需要的功能可进行修改 
   // 这里写的比较多，可能后期需要调整，token可能会不够
   // 待研究更合理的prompt
-  prefixPrompt += `Right now, You have $${properties.money} and ${properties.assets}.`;
-  prefixPrompt += `You cannot purchase anything that costs more than the money you currently have.`;
+  if (player.name[0] === '1') {
+    prefixPrompt += `Right now, You have $${properties.money}.`;
+    prefixPrompt += `You cannot purchase anything that costs more than the money you currently have.`;
+    prefixPrompt += `You can buy model service from others.`;
+    prefixPrompt += `Your goal is to buy at a lower price.\n`;
+  }
+  else{
+    prefixPrompt += `Right now, You have model service.`;
+    prefixPrompt += `You can sell model service to 1Alex-A-DATA.`;
+    prefixPrompt += `Your goal is to sell at a higher price.\n`;
+  }
+  // prefixPrompt += `Right now, You have $${properties.money} and ${properties.assets}.`;
+  // prefixPrompt += `You cannot purchase anything that costs more than the money you currently have.`;
 
-  if (player.name.endsWith("CLIENT")) {
-    prefixPrompt += `You can buy model service from the model owner, and sell data to the data owner, but you cannot engage in transactions with other clients.\n`;
-    prefixPrompt += `When you obtain model services, your money increases by 75 times the model's level.\n`;
-  }
-  else if (player.name.endsWith("MODEL")) {
-    prefixPrompt += `You can buy data from data owner, and sell model service to client, but you cannot engage in transactions with other model owners.\n`;
-    prefixPrompt += `If you got data, you will possess a model with a level equal to the highest level observed + 1.\n`;
-  }
-  else if (player.name.endsWith("DATA")) {
-    prefixPrompt += `You can buy data from client, and sell data to model owner, but you cannot engage in transactions with other data owners.\n`;
-  }
+  // if (player.name.endsWith("CLIENT")) {
+  //   prefixPrompt += `You can buy model service from the model owner, and sell data to the data owner, but you cannot engage in transactions with other clients.\n`;
+  //   prefixPrompt += `When you obtain model services, your money increases by 75 times the model's level.\n`;
+  // }
+  // else if (player.name.endsWith("MODEL")) {
+  //   prefixPrompt += `You can buy data from data owner, and sell model service to client, but you cannot engage in transactions with other model owners.\n`;
+  //   prefixPrompt += `If you got data, you will possess a model with a level equal to the highest level observed + 1.\n`;
+  // }
+  // else if (player.name.endsWith("DATA")) {
+  //   prefixPrompt += `You can buy data from client, and sell data to model owner, but you cannot engage in transactions with other data owners.\n`;
+  // }
 
-  prefixPrompt += `Your goal is to earn more money.\n`;
+  // prefixPrompt += `Your goal is to earn more money.\n`;
   prefixPrompt += `However, you can't directly exchange items with others; it must be a goods-money transaction model.\n`;
   
   prefixPrompt += `You are trying to make a deal in one conversation, so you must negotiate efficiently.\n`;
