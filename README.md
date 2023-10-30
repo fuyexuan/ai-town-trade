@@ -25,19 +25,19 @@ The primary goal of this project, beyond just being a lot of fun to work on, is 
 ## Stack
 
 - Game engine & Database: [Convex](https://convex.dev/)
-- VectorDB: [Pinecone](https://www.pinecone.io/)
+- VectorDB: Convex or [Pinecone](https://www.pinecone.io/)
 - Auth: [Clerk](https://clerk.com/)
 - Text model: [OpenAI](https://platform.openai.com/docs/models)
 - Deployment: [Fly](https://fly.io/)
 - Pixel Art Generation: [Replicate](https://replicate.com/), [Fal.ai](https://serverless.fal.ai/lora)
-
+- Background Music Generation: [Replicate](https://replicate.com/) using [MusicGen](https://huggingface.co/spaces/facebook/MusicGen)
 ## Installation
 
 ### Clone repo and Install packages
 
 ```bash
-git clone git@github.com:a16z-infra/ai-town.git
-cd AI-town
+git clone https://github.com/a16z-infra/ai-town.git
+cd ai-town
 npm install
 npm run dev
 ```
@@ -45,7 +45,7 @@ npm run dev
 `npm run dev` will fail asking for environment variables.
 Enter them in the environment variables on your Convex dashboard to proceed.
 You can get there via `npx convex dashboard` or https://dashboard.convex.dev
-See below on how to get the various environnment variables.
+See below on how to get the various environment variables.
 
 a. **Set up Clerk**
 
@@ -66,27 +66,46 @@ b. **OpenAI API key**
 
 Visit https://platform.openai.com/account/api-keys to get your OpenAI API key if you're using OpenAI for your language model.
 
-c. **Pinecone API keys**
+You can use the default `https://api.openai.com` or a third-party website. (such as: Azure, proxy website, etc.)
+
+To use a custom provider, make sure that the third-party website supports and enables the corresponding model (for example: `gpt-3.5-turbo-16k`, `text-embedding-ada-002`)
+In addition to the `OPENAI_API_KEY` environment variable (see below), add `OPENAI_API_BASE=<your-base-url>`
+
+c. **Pinecone API keys (Optional)**
+
+By default it will use the Convex vector storage.
+If you plan to store more than 100k vectors, you can use Pinecone.
+It will use Pinecone if you set the associated Pinecone environment variables.
 
 - Create a Pinecone index by visiting https://app.pinecone.io/ and click on "Create Index"
 - Give it an index name (this will be the environment variable `PINECONE_INDEX_NAME`)
 - Fill in Dimension as `1536`
 - Once the index is successfully created, click on "API Keys" on the left side nav and create an API key: copy "Environment" value to `PINECONE_ENVIRONMENT` variable, and "Value" to `PINECONE_API_KEY`
 
-d. **Add secrets to the convex dashboard**
+d. **Replicate API key (Optional)**
+For Daily background music generation, create a
+[Replicate](https://replicate.com/) account and create a token in your Profile's
+[API Token page](https://replicate.com/account/api-tokens).
+Add the token as `REPLICATE_API_TOKEN` in your Convex environment variables.
+
+e. **Add environment variables to the Convex backend**
+
+Environment variables for a Convex backend is configured through the dashboard:
 
 ```bash
 npx convex dashboard
 ```
 
-Go to "settings" and add the following environment varables. `CLERK_ISSUER_URL` should be the URL from the JWKS endpoint.
+Go to "settings" and add the following environment variables. `CLERK_ISSUER_URL` should be the URL from the JWKS endpoint.
 
 ```bash
 OPENAI_API_KEY  sk-*******
+OPENAI_API_BASE  sk-******* # optional
 CLERK_ISSUER_URL  https://****
-PINECONE_API_KEY  ********
-PINECONE_ENVIRONMENT us****
-PINECONE_INDEX_NAME  ********
+PINECONE_API_KEY  ******** # optional
+PINECONE_ENVIRONMENT us**** # optional
+PINECONE_INDEX_NAME  ******** # optional
+REPLICATE_API_TOKEN **** #optional
 ```
 
 ### Run the code
@@ -218,11 +237,27 @@ RUN npm run build
 ```
 - Run `fly deploy --ha=false` to deploy the app. The --ha flag makes sure fly only spins up one instance, which is included in the free plan.
 - Run `fly scale memory 512` to scale up the fly vm memory for this app.
-- Create a new file `.env.prod` locally and fill in all the production-environment secrets. Remember to update `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` by copying secrets from Clerk's production instance -`cat .env.prod | fly secrets import` to upload secrets. Also remember to update `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL`.
+- Create a new file `.env.prod` locally and fill in all the production-environment secrets. Remember to update `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` by copying secrets from Clerk's production instance -`cat .env.prod | fly secrets import` to upload secrets. Also remember to update `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` -- both of them should now point to Convex's prod environment.
 
+#### Deploy Convex functions to prod environment
+Before you can run the app, you will need to make sure the convex functions are deployed to its production environment.
+
+1. Run `npx convex deploy` to deploy the convex functions to production
+2. Run `npx convex run init --prod --no-push`
+
+If you have existing data you want to clear, you can run `npx convex run testing:debugClearAll --prod --no-push`
 
 ## Customize your own simulation
-NOTE: every time you change character data, you should re-run `npx convex run testing:debugClearAll --no-push` and then `npm run dev` to re-upload everything to Convex. This is because character data is sent to Convex on the initial load. However, beware that `npx convex run testing:debugClearAll --no-push` WILL wipe all of your data, including your vector store.
+
+NOTE: every time you change character data, you should re-run
+`npx convex run testing:debugClearAll` and then
+`npm run dev` to re-upload everything to Convex.
+This is because character data is sent to Convex on the initial load.
+However, beware that `npx convex run testing:debugClearAll --no-push` WILL wipe
+all of your data, including your vector store.
+To edit character data on the fly, you can edit it from the convex Dashboard in
+the "memories" table.
+Try filtering for "identity" or "relationship" as the type.
 
 1. Create your own characters and stories: All characters and stories, as well as their spritesheet references are stored in [data.ts](./convex/characterdata/data.ts#L4). You can start by changing character descriptions.
 2. Updating spritesheets: in `data.ts`, you will see this code:
@@ -240,9 +275,11 @@ You should find a sprite sheet for your character, and define sprite motion / as
 
 
 3. Update the background (environment): `convex/maps/firstmap.ts` is where the map gets loaded. The easiest way to export a tilemap is by using [Tiled](https://www.mapeditor.org/) -- Tiled exports tilemaps as a CSV and you can convert CSV to a 2d array accepted by firstmap.ts
+4. Change the background music by modifying the prompt in `convex/lib/replicate.ts`
+5. Change how often to generate new music at `convex/crons.ts` by modifying the `generate new background music` job
 
 ## Credits
-- All interactions, background music and rendering on the <Game/> component in the project are powered by [PixiJS](https://pixijs.com/). 
+- All interactions, background music and rendering on the <Game/> component in the project are powered by [PixiJS](https://pixijs.com/).
 - Tilesheet:
     - https://opengameart.org/content/16x16-game-assets by George Bailey
     - https://opengameart.org/content/16x16-rpg-tileset by hilau

@@ -18,19 +18,6 @@ export function pineconeAvailable(): boolean {
   );
 }
 
-if (!pineconeAvailable()) {
-  const deploymentName = process.env.CONVEX_CLOUD_URL?.slice(8).replace('.convex.cloud', '');
-  throw new Error(
-    '\n  Missing PINECONE_API_KEY, PINECONE_ENVIRONMENT, or PINECONE_INDEX_NAME' +
-      ' in environment variables.\n\n' +
-      '  Get one at https://app.pinecone.io/\n\n' +
-      '  Paste it on the Convex dashboard:\n' +
-      '  https://dashboard.convex.dev/d/' +
-      deploymentName +
-      '/settings?var=PINECONE_API_KEY&var=PINECONE_ENVIRONMENT&var=PINECONE_INDEX_NAME',
-  );
-}
-
 export async function pineconeIndex() {
   const client = new PineconeClient();
   await client.init({
@@ -42,6 +29,9 @@ export async function pineconeIndex() {
 
 export const deleteVectors = internalAction({
   handler: async (ctx, { tableName, ids }: { tableName: TableNames; ids: Id<TableNames>[] }) => {
+    if (!pineconeAvailable()) {
+      return;
+    }
     const pinecone = await pineconeIndex();
     await pinecone.delete1({
       // NOTE: Pinecone namespaces are a paid feature. Uncomment this line
@@ -103,7 +93,6 @@ export async function queryVectors<TableName extends TableNames>(
   filter: object,
   limit: number,
 ) {
-  const start = Date.now();
   const pinecone = await pineconeIndex();
   const { matches } = await pinecone.query({
     queryRequest: {
@@ -120,8 +109,11 @@ export async function queryVectors<TableName extends TableNames>(
   if (!matches) {
     throw new Error('Pinecone returned undefined results');
   }
-  return matches.filter((m) => !!m.score).map(({ id, score }) => ({ _id: id, score })) as {
-    _id: Id<TableName>;
-    score: number;
-  }[];
+  const results = [];
+  for (const { id, score } of matches) {
+    if (score) {
+      results.push({ id: id as Id<TableName>, score });
+    }
+  }
+  return results;
 }

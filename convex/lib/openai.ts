@@ -1,7 +1,6 @@
 // That's right! No imports and no dependencies 🤯
 
 // FYX 增加对azure openai 的支持
-// azure暂时坏了，改回openai
 
 export async function chatCompletion(
   body: Omit<CreateChatCompletionRequest, 'model'> & {
@@ -20,17 +19,33 @@ export async function chatCompletion(
 
   // body.model = body.model ?? 'gpt-3.5-turbo-16k'; // openai 模型名
   body.model = body.model ?? 'gpt-35-turbo'; // azure-openai 模型名
+  //openai
+  // const openaiApiBase = process.env.OPENAI_API_BASE || 'https://api.openai.com';
+
+  //azure
+  const openaiApiBase = process.env.ENDPOINT || 'https://api.openai.com';
+  const azureApideployment = '/openai/deployments/' + (process.env.DEPLOYMENT_NAME || 'v1');
+  const azureApiversion = '?' + (process.env.API_VERSION || 'api-version=2023-05-15');
+
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
-    // const result = await fetch('https://api.openai.com/v1/chat/completions', {
-    const result = await fetch('https://wxh.openai.azure.com/openai/deployments/GPT35/chat/completions?api-version=2023-05-15', {
+    //openai
+    // const apiUrl = openaiApiBase + '/v1/chat/completions';
+
+    //azure
+    const apiUrl = openaiApiBase + azureApideployment + '/completions' + azureApiversion;
+
+    const result = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        //openai
+        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        
+        //azure
         'api-key': process.env.OPENAI_API_KEY ?? "", 
       },
 
@@ -66,28 +81,38 @@ export async function fetchEmbeddingBatch(texts: string[]) {
   }
   // console.debug('Embedding text:',texts);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-    'api-key': process.env.OPENAI_API_KEY ?? "",
-  };
+  //openai
+  // const openaiApiBase = process.env.OPENAI_API_BASE || 'https://api.openai.com';
 
-  // console.log(`Embedding headers:`, headers);
+  //azure
+  const openaiApiBase = process.env.ENDPOINT || 'https://api.openai.com';
+  const azureApideployment = '/openai/deployments/' + (process.env.DEPLOYMENT_NAME || 'v1');
+  const azureApiversion = '?' + (process.env.API_VERSION || 'api-version=2023-05-15');
+
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
     // 由于azure的openai接口限制16维数据，一开始初始化人物信息时需要先用openai的接口，初始化完成后改为azure运行
-    // const result = await fetch('https://api.openai.com/v1/embeddings', {
-    const result = await fetch('https://wxh.openai.azure.com/openai/deployments/emb/embeddings?api-version=2023-05-15', {
+
+    //openai
+    // const apiUrl = openaiApiBase + '/v1/embeddings';
+
+    //azure
+    const apiUrl = openaiApiBase + azureApideployment + '/embeddings' + azureApiversion;
+
+    const result = await fetch(apiUrl, {
       method: 'POST',
-      // headers: {
-      //   'Content-Type': 'application/json',
-        // Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
-        // 'api-key': process.env.OPENAI_API_KEY ?? "",
-      // },
-      headers: headers,
+      headers: {
+        'Content-Type': 'application/json',
+
+        //openai
+        Authorization: 'Bearer ' + process.env.OPENAI_API_KEY_original,
+        
+        //azure
+        'api-key': process.env.OPENAI_API_KEY ?? "",
+      },
 
 
       body: JSON.stringify({
@@ -110,7 +135,7 @@ export async function fetchEmbeddingBatch(texts: string[]) {
     throw new Error('Unexpected number of embeddings');
   }
   const allembeddings = json.data;
-  allembeddings.sort((a, b) => b.index - a.index);
+  allembeddings.sort((a, b) => a.index - b.index);
   return {
     embeddings: allembeddings.map(({ embedding }) => embedding),
     usage: json.usage.total_tokens,

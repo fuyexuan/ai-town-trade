@@ -9,6 +9,7 @@ import { clientMessageMapper } from './chat';
 import { MemoryDB } from './lib/memory';
 import { getPlayer, stop, walk } from './journal';
 import { handleAgentInteraction } from './agent';
+import { enqueueBackgroundMusicGeneration } from "./lib/replicate"
 import schema from './schema';
 import { findRoute } from './lib/routing';
 
@@ -186,8 +187,8 @@ export const runAgentLoop = internalAction({
     const playerIds = players.map((p) => p.id);
 
     let index = args.numberOfLoops || 100;
-    let randomX: number[] = [];
-    let displacement = 25;
+    const randomX: number[] = [];
+    const displacement = 25;
     for (let i = 0; i < playerIds.length; i++) {
       randomX.push(displacement * i);
     }
@@ -197,6 +198,14 @@ export const runAgentLoop = internalAction({
       await ctx.runAction(internal.agent.runAgentBatch, { playerIds, noSchedule: true });
     }
   },
+});
+
+export const replicate = internalAction({
+  args: {},
+  handler: async (cts, args) => {
+    const result = await enqueueBackgroundMusicGeneration(cts, args);
+    console.log(result)
+  }
 });
 
 // For making conversations happen without walking around, clear before conversation start.
